@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DTLsaysWhat &mdash; Reference Manual</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --border: #252b3b;
+    --accent: #4ade80;
+    --accent-dim: #22543d;
+    --text: #c9d1e0;
+    --text-muted: #5a6580;
+    --text-heading: #e8edf5;
+    --code-bg: #12161f;
+    --code-border: #1e2535;
+    --sidebar-w: 240px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* SIDEBAR */
+  nav {
+    position: fixed;
+    top: 0; left: 0;
+    width: var(--sidebar-w);
+    height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 28px 0 40px;
+    z-index: 100;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  nav .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+    line-height: 1.4;
+  }
+
+  nav .logo span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 9px;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  nav a {
+    display: block;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 12px;
+    padding: 5px 20px;
+    transition: color 0.15s, background 0.15s;
+    font-family: 'IBM Plex Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  nav a:hover { color: var(--accent); background: rgba(74,222,128,0.05); }
+  nav a.active { color: var(--accent); }
+
+  nav a.nav-section-link {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 14px 20px 4px;
+    opacity: 0.5;
+    cursor: pointer;
+  }
+  nav a.nav-section-link:hover { opacity: 1; background: none; }
+
+  nav .nav-section {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 14px 20px 4px;
+    opacity: 0.5;
+  }
+
+  /* MAIN */
+  main {
+    margin-left: var(--sidebar-w);
+    padding: 56px 64px 100px;
+    max-width: calc(var(--sidebar-w) + 860px);
+    width: 100%;
+  }
+
+  /* HEADER */
+  .doc-header {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .doc-header h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text-heading);
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+  }
+
+  .doc-header h1 .accent { color: var(--accent); }
+
+  .meta-pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    color: var(--text-muted);
+  }
+
+  .pill .k { color: var(--accent); margin-right: 4px; }
+
+  /* SECTIONS */
+  h2 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin: 52px 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-heading);
+    margin: 32px 0 10px;
+  }
+
+  h3 code {
+    color: var(--accent);
+    background: none;
+    padding: 0;
+    font-size: 13px;
+    border: none;
+  }
+
+  p { margin-bottom: 14px; }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* CODE */
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 3px;
+    padding: 1px 6px;
+    color: #a5f3c0;
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 14px 0 20px;
+    overflow-x: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #a5f3c0;
+  }
+
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px;
+    font-size: 13px;
+  }
+
+  thead tr {
+    background: var(--code-bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    padding: 10px 14px;
+    text-align: left;
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text);
+  }
+
+  td:first-child {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(74,222,128,0.03); }
+
+  /* LISTS */
+  ul {
+    list-style: none;
+    margin: 10px 0 16px;
+    padding-left: 0;
+  }
+
+  ul li {
+    padding: 3px 0 3px 20px;
+    position: relative;
+  }
+
+  ul li::before {
+    content: '›';
+    position: absolute;
+    left: 4px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* CATEGORY BLOCKS */
+  .cat-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent-dim);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 20px 0;
+  }
+
+  .cat-block h3 {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: var(--accent);
+  }
+
+  .cat-block .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .cat-block p { margin-bottom: 6px; }
+  .cat-block p:last-child { margin-bottom: 0; }
+
+  /* HR */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 40px 0;
+  }
+
+  /* CALLOUT */
+  .callout {
+    background: rgba(74,222,128,0.05);
+    border: 1px solid var(--accent-dim);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+
+  .callout strong { color: var(--accent); }
+
+  /* LIMITATIONS */
+  .limit-list {
+    list-style: none;
+    margin: 10px 0;
+    padding: 0;
+  }
+
+  .limit-list li {
+    padding: 10px 14px 10px 44px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .limit-list li:last-child { border-bottom: none; }
+
+  .limit-list li::before {
+    content: '!';
+    position: absolute;
+    left: 14px;
+    top: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: #f59e0b;
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    text-align: center;
+    padding-left: 0;
+  }
+
+  strong { color: var(--text-heading); font-weight: 600; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 800px) {
+    nav { display: none; }
+    main { margin-left: 0; padding: 32px 24px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">DTLsaysWhat<span>Reference Manual v1.0</span></div>
+  <a class="nav-section-link" href="#contents">Contents</a>
+  <a href="#overview">Overview</a>
+  <a href="#requirements">Requirements</a>
+  <a href="#syntax">Command syntax</a>
+  <a href="#arguments">Arguments</a>
+  <a href="#output">Output files</a>
+  <a href="#datasources">Data sources</a>
+  <a class="nav-section-link" href="#categories">Categories</a>
+  <a href="#cat-system">system</a>
+  <a href="#cat-hardware">hardware</a>
+  <a href="#cat-memory">memory</a>
+  <a href="#cat-disk">disk</a>
+  <a href="#cat-gpu">gpu</a>
+  <a href="#cat-network">network</a>
+  <a href="#cat-software">software</a>
+  <a href="#cat-services">services</a>
+  <a href="#cat-processes">processes</a>
+  <a href="#cat-startup">startup</a>
+  <a href="#cat-security">security</a>
+  <a href="#cat-updates">updates</a>
+  <a href="#cat-drivers">drivers</a>
+  <a href="#cat-users">users</a>
+  <a href="#cat-tasks">tasks</a>
+  <a href="#cat-shares">shares</a>
+  <a href="#cat-events">events</a>
+  <a href="#cat-perf">perf</a>
+  <a href="#cat-virt">virt</a>
+  <a class="nav-section-link" href="#other">Other</a>
+  <a href="#exit">Exit behavior</a>
+  <a href="#limitations">Known limitations</a>
+</nav>
+
+<main>
+
+  <div class="doc-header">
+    <h1><span class="accent">DTLsaysWhat</span> &mdash; Reference Manual</h1>
+    <div class="meta-pills">
+      <span class="pill"><span class="k">version</span>1.0</span>
+      <span class="pill"><span class="k">platform</span>Windows only</span>
+      <span class="pill"><span class="k">script</span>DTLsaysWhat.py</span>
+    </div>
+  </div>
+
+  <h2 id="contents" style="display:none"></h2>
+  <h2 id="overview">Overview</h2>
+  <p><code>DTLsaysWhat</code> is a Windows system inventory tool written in Python, inspired by the <code>What</code> internal use only Utility written by Stanley Rabinowitz for the DEC VAX/VMS systems in the 80s. It collects detailed information about the local or a remote Windows machine across up to 20 functional categories, and produces both a plain-text report and a navigable HTML report, automatically saved to disk at the end of each run.</p>
+
+  <h2 id="requirements">Requirements</h2>
+
+  <h3>Python dependencies</h3>
+  <p>The following third-party packages must be installed before use:</p>
+  <pre><code>pip install wmi pywin32 psutil</code></pre>
+  <p>The standard library modules used (<code>argparse</code>, <code>ctypes</code>, <code>datetime</code>, <code>io</code>, <code>os</code>, <code>socket</code>, <code>subprocess</code>, <code>sys</code>, <code>winreg</code>) require no additional installation.</p>
+
+  <h3>Privileges</h3>
+  <p>Some categories (Security, BitLocker, Hyper-V, TPM, Secure Boot, Scheduled Tasks, Firewall) may require the script to be run with elevated privileges (<em>Run as Administrator</em>). Without elevation, those sections may return partial or no data.</p>
+
+  <h3>Encoding</h3>
+  <p>On French-language Windows systems, <code>cmd.exe</code> defaults to OEM code page 850. The tool detects and handles this automatically. To guarantee correct display of accented characters, it is recommended to either:</p>
+  <ul>
+    <li>invoke the script with <code>python -X utf8 DTLsaysWhat.py</code>, or</li>
+    <li>set the environment variable <code>PYTHONUTF8=1</code> before running.</li>
+  </ul>
+
+  <h2 id="syntax">Command syntax</h2>
+  <pre><code>python DTLsaysWhat.py [CATEGORY] [--output FILE] [--computer NAME_OR_IP]</code></pre>
+  <p>All arguments are optional. When called with no arguments, the tool defaults to the <code>system</code> category and targets the local machine.</p>
+
+  <h2 id="arguments">Arguments</h2>
+
+  <h3>Positional argument: <code>CATEGORY</code></h3>
+  <p>Specifies which inventory category to collect. If omitted, defaults to <code>system</code>.</p>
+
+  <table>
+    <thead><tr><th>Category</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>all</td><td>Runs all categories sequentially</td></tr>
+      <tr><td>system</td><td>OS identification, version, architecture, uptime, timezone</td></tr>
+      <tr><td>hardware</td><td>CPU, motherboard, BIOS/UEFI</td></tr>
+      <tr><td>memory</td><td>RAM totals, virtual memory, physical DIMM slots</td></tr>
+      <tr><td>disk</td><td>Physical drives and logical volumes</td></tr>
+      <tr><td>gpu</td><td>Graphics adapters, VRAM, current resolution, driver version</td></tr>
+      <tr><td>network</td><td>Network interfaces, IP addresses, routing table, DNS, active TCP connections, SMB shares, mapped drives, proxy settings</td></tr>
+      <tr><td>software</td><td>Installed applications (from registry), AppX/Store packages</td></tr>
+      <tr><td>services</td><td>Running services, stopped services with automatic start mode</td></tr>
+      <tr><td>processes</td><td>All currently running processes with PID, RAM usage, CPU time</td></tr>
+      <tr><td>startup</td><td>Startup entries from WMI and from HKLM/HKCU registry Run keys</td></tr>
+      <tr><td>security</td><td>Windows Defender status, firewall profiles, BitLocker, Secure Boot, TPM</td></tr>
+      <tr><td>updates</td><td>Installed Windows hotfixes and updates (KB numbers)</td></tr>
+      <tr><td>drivers</td><td>Signed PnP drivers with version and manufacturer</td></tr>
+      <tr><td>users</td><td>Local accounts, user profiles, current session user and admin status</td></tr>
+      <tr><td>tasks</td><td>Active (non-disabled) scheduled tasks outside the Microsoft namespace</td></tr>
+      <tr><td>shares</td><td>Local SMB shares and mapped network drives</td></tr>
+      <tr><td>events</td><td>Last 20 errors and warnings from System and Application event logs</td></tr>
+      <tr><td>perf</td><td>Instantaneous CPU load per core, memory usage, disk usage per volume</td></tr>
+      <tr><td>virt</td><td>VM detection (VMware, VirtualBox, Hyper-V, QEMU, KVM, Xen), Hyper-V role status, hosted VMs, WSL distributions</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Option: <code>--output FILE</code> &nbsp;<small style="color:var(--text-muted);font-size:11px;">short form: <code>-o FILE</code></small></h3>
+  <p>Specifies the path and filename for the text report output. If this option is omitted, the tool automatically generates a filename using the format:</p>
+  <pre><code>DTLsaysWhat_&lt;HOSTNAME&gt;_&lt;YYYYMMDD_HHMMSS&gt;.txt</code></pre>
+  <p>The file is written to the current working directory.</p>
+
+  <h3>Option: <code>--computer NAME_OR_IP</code></h3>
+  <p>Specifies the target machine for data collection. Accepts either a NetBIOS name or an IP address. Defaults to the local machine's hostname. Remote collection relies on WMI and requires appropriate network access and permissions on the target machine.</p>
+
+  <h2 id="output">Output files</h2>
+  <p>Each run produces two files automatically:</p>
+  <p><strong>Text report (<code>.txt</code>):</strong> Plain UTF-8 text file containing the full console output, structured with section headers and subsection separators.</p>
+  <p><strong>HTML report (<code>.html</code>):</strong> A self-contained HTML file with a dark terminal aesthetic (green-on-black, monospace font). It includes a fixed left-side navigation sidebar linking to each major section, allowing quick navigation across large reports. Both files share the same base name, differing only in extension.</p>
+  <div class="callout">If <code>--output</code> is specified as <code>report.txt</code>, the HTML file is saved as <code>report.html</code>. If the output path does not end in <code>.txt</code>, <code>.html</code> is appended to the full path.</div>
+
+  <h2 id="datasources">Data sources</h2>
+  <p>The tool collects data through five complementary mechanisms:</p>
+  <p><strong>WMI (Windows Management Instrumentation):</strong> Used for the majority of hardware, OS, software, service, driver, update, and user data. WMI queries can target a remote machine when <code>--computer</code> is specified.</p>
+  <p><strong>PowerShell cmdlets:</strong> Used for categories that have no direct WMI equivalent or where PowerShell provides richer output. Affected categories include: <code>security</code>, <code>users</code>, <code>tasks</code>, <code>software</code> (AppX packages), <code>events</code>, <code>virt</code>. PowerShell is invoked with UTF-8 output encoding enforced.</p>
+  <p><strong>Windows native commands:</strong> Used selectively within the <code>network</code> category: <code>ipconfig /all</code> for gateway and DNS information, <code>route print</code> for the routing table, <code>net share</code> and <code>net use</code> for SMB shares and mapped drives.</p>
+  <p><strong>Windows Registry:</strong> Used for proxy settings (<code>HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings</code>) and startup entries (<code>HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</code>, <code>HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</code>), and for OEM code page detection.</p>
+  <p><strong>psutil:</strong> Used for real-time process enumeration, network interface statistics, active TCP connections, and instantaneous performance metrics (CPU per core, memory, disk usage).</p>
+
+  <h2 id="categories">Categories: data collected</h2>
+
+  <div class="cat-block" id="cat-system">
+    <h3>system</h3>
+    <div class="label">WMI queries</div>
+    <p><code>Win32_ComputerSystem</code>, <code>Win32_ComputerSystemProduct</code>, <code>Win32_SystemEnclosure</code>, <code>Win32_OperatingSystem</code>, <code>Win32_TimeZone</code></p>
+    <div class="label">Reported fields</div>
+    <p>Machine name, domain or workgroup membership, manufacturer, model, serial number, UUID, chassis type, OS caption, version and build number, architecture, Windows directory, installation date, last boot time, computed uptime, timezone.</p>
+  </div>
+
+  <div class="cat-block" id="cat-hardware">
+    <h3>hardware</h3>
+    <div class="label">WMI queries</div>
+    <p><code>Win32_Processor</code>, <code>Win32_BaseBoard</code>, <code>Win32_BIOS</code></p>
+    <div class="label">Reported fields</div>
+    <p>CPU name, manufacturer, physical and logical core count, base frequency, socket designation, architecture, L2 and L3 cache sizes; motherboard manufacturer, product name, version, serial number; BIOS/UEFI manufacturer, SMBIOS version, release date.</p>
+  </div>
+
+  <div class="cat-block" id="cat-memory">
+    <h3>memory</h3>
+    <div class="label">WMI queries</div>
+    <p><code>Win32_OperatingSystem</code>, <code>Win32_PhysicalMemory</code></p>
+    <div class="label">Reported fields</div>
+    <p>Total and available physical RAM, total and free virtual memory; per-DIMM slot: bank label, capacity, speed (MHz), memory type (DDR generation), manufacturer, serial number; total DIMM count.</p>
+  </div>
+
+  <div class="cat-block" id="cat-disk">
+    <h3>disk</h3>
+    <div class="label">WMI queries</div>
+    <p><code>Win32_DiskDrive</code>, <code>Win32_LogicalDisk</code></p>
+    <div class="label">Reported fields</div>
+    <p>Per physical disk: index, model, size, interface type, partition count, serial number, status; per logical volume: drive letter, type (removable/fixed/network/CD/RAM), filesystem, total size, free space, volume label.</p>
+  </div>
+
+  <div class="cat-block" id="cat-gpu">
+    <h3>gpu</h3>
+    <div class="label">WMI queries</div>
+    <p><code>Win32_VideoController</code></p>
+    <div class="label">Reported fields</div>
+    <p>Adapter name, manufacturer, VRAM, current horizontal and vertical resolution, refresh rate, driver version and date, status.</p>
+  </div>
+
+  <div class="cat-block" id="cat-network">
+    <h3>network</h3>
+    <div class="label">Data sources</div>
+    <p>psutil (<code>net_if_addrs</code>, <code>net_if_stats</code>, <code>net_connections</code>), <code>ipconfig /all</code>, <code>route print</code>, <code>net share</code>, <code>net use</code>, Windows Registry</p>
+    <div class="label">Reported fields</div>
+    <p>Per interface: name, up/down status, link speed, IPv4/IPv6/MAC addresses; default gateways; configured DNS servers; full routing table; established TCP connections (local and remote address/port); local SMB shares; mapped network drives; proxy configuration (enabled/disabled, server address).</p>
+  </div>
+
+  <div class="cat-block" id="cat-software">
+    <h3>software</h3>
+    <div class="label">Data sources</div>
+    <p>Windows Registry (<code>HKLM</code> and <code>HKCU</code> Uninstall keys, including Wow6432Node for 32-bit applications), PowerShell <code>Get-AppxPackage</code></p>
+    <div class="label">Reported fields</div>
+    <p>Installed applications sorted alphabetically (name, version, publisher); total application count; AppX/Store package list (name, version).</p>
+  </div>
+
+  <div class="cat-block" id="cat-services">
+    <h3>services</h3>
+    <div class="label">WMI queries</div>
+    <p><code>Win32_Service</code></p>
+    <div class="label">Reported fields</div>
+    <p>All currently running services (display name, start mode); all stopped services with start mode set to Automatic (display name, current state).</p>
+  </div>
+
+  <div class="cat-block" id="cat-processes">
+    <h3>processes</h3>
+    <div class="label">Data source</div>
+    <p>psutil <code>process_iter</code></p>
+    <div class="label">Reported fields</div>
+    <p>Per process: name, PID, RSS memory usage, total CPU time (user + system, in seconds). Sorted alphabetically by process name.</p>
+  </div>
+
+  <div class="cat-block" id="cat-startup">
+    <h3>startup</h3>
+    <div class="label">Data sources</div>
+    <p>WMI <code>Win32_StartupCommand</code>, Windows Registry Run keys</p>
+    <div class="label">Reported fields</div>
+    <p>WMI startup entries (name, associated user, command line); HKLM Run entries (value name, command); HKCU Run entries (value name, command).</p>
+  </div>
+
+  <div class="cat-block" id="cat-security">
+    <h3>security</h3>
+    <div class="label">Data sources</div>
+    <p>PowerShell <code>Get-MpComputerStatus</code>, <code>Get-NetFirewallProfile</code>, <code>Get-BitLockerVolume</code>, <code>Confirm-SecureBootUEFI</code>, <code>Get-Tpm</code></p>
+    <div class="label">Reported fields</div>
+    <p>Windows Defender status (enabled, signature version, signature date, real-time protection, antispyware); per firewall profile (domain/private/public): enabled state, default inbound and outbound actions; BitLocker status per volume (mount point, volume status, protection status); Secure Boot state; TPM properties.</p>
+  </div>
+
+  <div class="cat-block" id="cat-updates">
+    <h3>updates</h3>
+    <div class="label">WMI queries</div>
+    <p><code>Win32_QuickFixEngineering</code></p>
+    <div class="label">Reported fields</div>
+    <p>Per hotfix: KB identifier, installation date, installing account, description. Sorted by installation date, most recent first.</p>
+  </div>
+
+  <div class="cat-block" id="cat-drivers">
+    <h3>drivers</h3>
+    <div class="label">WMI queries</div>
+    <p><code>Win32_PnPSignedDriver</code></p>
+    <div class="label">Reported fields</div>
+    <p>Per driver: device name, driver version, manufacturer. Sorted alphabetically by device name. Only entries with a non-empty device name are included.</p>
+  </div>
+
+  <div class="cat-block" id="cat-users">
+    <h3>users</h3>
+    <div class="label">Data sources</div>
+    <p>PowerShell <code>Get-LocalUser</code>, WMI <code>Win32_UserProfile</code>, environment variables (<code>USERNAME</code>, <code>USERDOMAIN</code>), Windows API <code>IsUserAnAdmin</code></p>
+    <div class="label">Reported fields</div>
+    <p>Local accounts (name, enabled state, last logon); user profiles (local path, loaded state), excluding special system profiles; current session user (domain and account name, administrator status).</p>
+  </div>
+
+  <div class="cat-block" id="cat-tasks">
+    <h3>tasks</h3>
+    <div class="label">Data source</div>
+    <p>PowerShell <code>Get-ScheduledTask</code></p>
+    <div class="label">Reported fields</div>
+    <p>Non-disabled scheduled tasks outside the <code>\Microsoft\*</code> namespace (task path, task name, state). Sorted by task path.</p>
+  </div>
+
+  <div class="cat-block" id="cat-shares">
+    <h3>shares</h3>
+    <div class="label">WMI queries</div>
+    <p><code>Win32_Share</code>, <code>Win32_NetworkConnection</code></p>
+    <div class="label">Reported fields</div>
+    <p>Local SMB shares (name, path, description); mapped network drives (local drive letter, remote UNC path, connection status).</p>
+  </div>
+
+  <div class="cat-block" id="cat-events">
+    <h3>events</h3>
+    <div class="label">Data source</div>
+    <p>PowerShell <code>Get-EventLog</code></p>
+    <div class="label">Reported fields</div>
+    <p>Last 20 errors and warnings from the System event log, then from the Application event log. Per entry: timestamp, entry type (Error/Warning), event ID, message text.</p>
+  </div>
+
+  <div class="cat-block" id="cat-perf">
+    <h3>perf</h3>
+    <div class="label">Data source</div>
+    <p>psutil (<code>cpu_percent</code>, <code>virtual_memory</code>, <code>swap_memory</code>, <code>disk_partitions</code>, <code>disk_usage</code>)</p>
+    <div class="label">Reported fields</div>
+    <p>CPU usage percentage per logical core (1-second sample); global CPU load; total, used, and available physical memory with percentage; swap total and used; per mounted volume: used and total space with percentage and filesystem type. Volumes with permission errors are noted.</p>
+  </div>
+
+  <div class="cat-block" id="cat-virt">
+    <h3>virt</h3>
+    <div class="label">Data sources</div>
+    <p>WMI <code>Win32_ComputerSystem</code>, <code>Win32_BIOS</code>; PowerShell <code>Get-WindowsOptionalFeature</code>, <code>Get-VM</code>; <code>wsl --list --verbose</code></p>
+    <div class="label">Reported fields</div>
+    <p>VM detection result based on model, manufacturer, and BIOS version strings (checked against VMware, VirtualBox, Hyper-V, VBOX, QEMU, KVM, Xen, Microsoft Corporation); Hyper-V Windows feature state; list of hosted VMs if Hyper-V role is active (name, state, assigned memory, generation); WSL distribution list.</p>
+  </div>
+
+  <h2 id="other" style="display:none"></h2>
+  <h2 id="exit">Exit behavior</h2>
+  <p>The tool always writes output files before exiting, regardless of category. If writing to the specified or auto-generated path fails (permission error, invalid path), an error message is printed to the console and the corresponding file is skipped. The other output file (text or HTML) is still attempted independently.</p>
+
+  <h2 id="limitations">Known limitations</h2>
+  <ul class="limit-list">
+    <li>The tool is strictly Windows-only. It imports <code>wmi</code>, <code>winreg</code>, and calls Windows-specific APIs; it will not run on Linux or macOS.</li>
+    <li>Remote WMI access (<code>--computer</code>) does not extend to PowerShell-based subsections (<code>security</code>, <code>users</code>, <code>tasks</code>, <code>software</code> AppX, <code>events</code>, <code>virt</code>), which always query the local machine.</li>
+    <li>Some sections require administrative privileges. Running without elevation produces no error for those sections; the relevant subsection output will simply be empty or contain a "not available" message.</li>
+    <li>The <code>perf</code> category provides an instantaneous snapshot only. CPU percentages are sampled over a 1-second interval per call; there is no continuous monitoring mode.</li>
+    <li>The <code>events</code> category retrieves the 20 most recent errors and warnings regardless of age; the "24 dernières heures" label in the section header is descriptive intent, not a filter applied to the query.</li>
+  </ul>
+
+</main>
+
+<script>
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('[id]');
+  const navLinks = document.querySelectorAll('nav a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(a => a.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

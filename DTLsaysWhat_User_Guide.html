@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DTLsaysWhat &mdash; User Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --border: #252b3b;
+    --accent: #4ade80;
+    --accent-dim: #22543d;
+    --text: #c9d1e0;
+    --text-muted: #5a6580;
+    --text-heading: #e8edf5;
+    --code-bg: #0a0e17;
+    --code-border: #1a2030;
+    --code-green: #00cc44;
+    --sidebar-w: 260px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  nav {
+    position: fixed;
+    top: 0; left: 0;
+    width: var(--sidebar-w);
+    height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 28px 0 40px;
+    z-index: 100;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  nav .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+    line-height: 1.4;
+  }
+
+  nav .logo span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 9px;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  nav a {
+    display: block;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 12px;
+    padding: 5px 20px;
+    transition: color 0.15s, background 0.15s;
+    font-family: 'IBM Plex Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  nav a:hover { color: var(--accent); background: rgba(74,222,128,0.05); }
+  nav a.active { color: var(--accent); }
+
+  nav a.nav-section-link {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 14px 20px 4px;
+    opacity: 0.5;
+  }
+  nav a.nav-section-link:hover { opacity: 1; background: none; }
+
+  main {
+    margin-left: var(--sidebar-w);
+    padding: 56px 64px 100px;
+    max-width: calc(var(--sidebar-w) + 900px);
+    width: 100%;
+  }
+
+  .doc-header {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .doc-header h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text-heading);
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+  }
+
+  .doc-header h1 .accent { color: var(--accent); }
+
+  .meta-pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    color: var(--text-muted);
+  }
+
+  .pill .k { color: var(--accent); margin-right: 4px; }
+
+  h2 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin: 52px 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-heading);
+    margin: 32px 0 10px;
+  }
+
+  h3 code {
+    color: var(--accent);
+    background: none;
+    padding: 0;
+    font-size: 13px;
+    border: none;
+  }
+
+  p { margin-bottom: 14px; }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 3px;
+    padding: 1px 6px;
+    color: #a5f3c0;
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 14px 0 20px;
+    overflow-x: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #a5f3c0;
+  }
+
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* Terminal output blocks */
+  .terminal {
+    background: #050505;
+    border: 1px solid #1a2a1a;
+    border-left: 3px solid var(--accent-dim);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 16px 0 24px;
+    overflow-x: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--code-green);
+  }
+
+  .terminal .th {
+    color: #00ff66;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #1a2a1a;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+  }
+
+  .terminal .sub {
+    color: #009933;
+    font-weight: bold;
+    display: block;
+    margin: 10px 0 4px;
+    border-left: 2px solid #00cc44;
+    padding-left: 6px;
+  }
+
+  .cat-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent-dim);
+    border-radius: 4px;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+
+  .cat-block h3 {
+    margin: 0 0 8px;
+    font-size: 15px;
+    color: var(--accent);
+  }
+
+  .cat-block .desc {
+    color: var(--text);
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+
+  .cat-block .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    margin-top: 14px;
+  }
+
+  .callout {
+    background: rgba(74,222,128,0.05);
+    border: 1px solid var(--accent-dim);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+
+  .callout strong { color: var(--accent); }
+
+  .warn {
+    background: rgba(245,158,11,0.05);
+    border: 1px solid rgba(245,158,11,0.25);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .warn strong { color: #f59e0b; }
+
+  ul {
+    list-style: none;
+    margin: 10px 0 16px;
+    padding-left: 0;
+  }
+
+  ul li {
+    padding: 3px 0 3px 20px;
+    position: relative;
+  }
+
+  ul li::before {
+    content: '›';
+    position: absolute;
+    left: 4px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px;
+    font-size: 13px;
+  }
+
+  thead tr {
+    background: var(--code-bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    padding: 10px 14px;
+    text-align: left;
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text);
+  }
+
+  td:first-child {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(74,222,128,0.03); }
+
+  strong { color: var(--text-heading); font-weight: 600; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 800px) {
+    nav { display: none; }
+    main { margin-left: 0; padding: 32px 24px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">DTLsaysWhat<span>User Guide v1.0</span></div>
+  <a class="nav-section-link" href="#contents">Contents</a>
+  <a href="#overview">Overview</a>
+  <a href="#quickstart">Quick Start</a>
+  <a href="#syntax">Command Syntax</a>
+  <a href="#output-files">Output Files</a>
+  <a href="#permissions">Permissions</a>
+  <a class="nav-section-link" href="#categories">Categories</a>
+  <a href="#cat-system">system</a>
+  <a href="#cat-hardware">hardware</a>
+  <a href="#cat-memory">memory</a>
+  <a href="#cat-disk">disk</a>
+  <a href="#cat-gpu">gpu</a>
+  <a href="#cat-network">network</a>
+  <a href="#cat-software">software</a>
+  <a href="#cat-services">services</a>
+  <a href="#cat-processes">processes</a>
+  <a href="#cat-startup">startup</a>
+  <a href="#cat-security">security</a>
+  <a href="#cat-updates">updates</a>
+  <a href="#cat-drivers">drivers</a>
+  <a href="#cat-users">users</a>
+  <a href="#cat-tasks">tasks</a>
+  <a href="#cat-shares">shares</a>
+  <a href="#cat-events">events</a>
+  <a href="#cat-perf">perf</a>
+  <a href="#cat-virt">virt</a>
+  <a class="nav-section-link" href="#notes">Notes &amp; Tips</a>
+  <a href="#remote">Remote collection</a>
+  <a href="#encoding">Encoding</a>
+  <a href="#limitations">Known limitations</a>
+</nav>
+
+<main>
+
+  <div class="doc-header">
+    <h1><span class="accent">DTLsaysWhat</span> &mdash; User Guide</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin-top:10px;">A practical guide to running DTLsaysWhat and interpreting its output, illustrated with real examples from a Windows 11 machine.</p>
+    <div class="meta-pills">
+      <span class="pill"><span class="k">version</span>1.0</span>
+      <span class="pill"><span class="k">platform</span>Windows only</span>
+      <span class="pill"><span class="k">script</span>DTLsaysWhat.py</span>
+      <span class="pill"><span class="k">requires</span>Python 3 + wmi + pywin32 + psutil</span>
+    </div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <h2 id="contents" style="display:none"></h2>
+  <h2 id="overview">Overview</h2>
+  <p><code>DTLsaysWhat</code> is a Windows system inventory tool written in Python. Inspired by the <code>WHAT</code> utility developed by Stanley Rabinowitz for DEC VAX/VMS systems in the 1980s, it collects detailed information about the local or a remote Windows machine, organized into up to 20 functional categories.</p>
+  <p>Every run automatically produces two output files saved to disk: a plain-text report (<code>.txt</code>) and a self-contained navigable HTML report (<code>.html</code>) with a fixed left sidebar.</p>
+
+  <!-- QUICK START -->
+  <h2 id="quickstart">Quick Start</h2>
+
+  <h3>Install dependencies</h3>
+  <pre><code>pip install wmi pywin32 psutil</code></pre>
+
+  <h3>Run a full inventory</h3>
+  <pre><code>python DTLsaysWhat.py all</code></pre>
+  <p>This collects all 20 categories sequentially and writes two files in the current directory, named after the hostname and timestamp:</p>
+  <pre><code>DTLsaysWhat_HOSTNAME_20260528_081930.txt
+DTLsaysWhat_HOSTNAME_20260528_081930.html</code></pre>
+
+  <h3>Run a single category</h3>
+  <pre><code>python DTLsaysWhat.py system
+python DTLsaysWhat.py security
+python DTLsaysWhat.py perf</code></pre>
+
+  <h3>Specify an output path</h3>
+  <pre><code>python DTLsaysWhat.py all --output C:\Reports\inventory.txt</code></pre>
+  <p>The HTML file is saved alongside as <code>inventory.html</code>.</p>
+
+  <!-- SYNTAX -->
+  <h2 id="syntax">Command Syntax</h2>
+  <pre><code>python DTLsaysWhat.py [CATEGORY] [--output FILE] [--computer NAME_OR_IP]</code></pre>
+  <p>All arguments are optional. Without arguments, the tool defaults to the <code>system</code> category and targets the local machine.</p>
+
+  <table>
+    <thead><tr><th>Argument</th><th>Short form</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>CATEGORY</td><td></td><td>Category to collect (see list below). Defaults to <code>system</code> if omitted. Use <code>all</code> to run every category.</td></tr>
+      <tr><td>--output FILE</td><td>-o FILE</td><td>Path for the text output file. If omitted, auto-generated from hostname and timestamp.</td></tr>
+      <tr><td>--computer NAME</td><td></td><td>Target machine name (NetBIOS) or IP address. Defaults to local host.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- OUTPUT FILES -->
+  <h2 id="output-files">Output Files</h2>
+  <p>Each run always produces two files regardless of the category selected.</p>
+  <p><strong>Text report (<code>.txt</code>):</strong> UTF-8 plain text, structured with section headers and subsection separators. Suitable for archiving, diffing, or sending to a colleague.</p>
+  <p><strong>HTML report (<code>.html</code>):</strong> Self-contained HTML file with a dark terminal aesthetic (green on black, monospace font). Includes a fixed left sidebar with anchor links to each section, making it easy to navigate long reports. Both files share the same base name.</p>
+  <div class="callout">If <code>--output</code> is set to <code>report.txt</code>, the HTML file is saved as <code>report.html</code>. If the output path does not end in <code>.txt</code>, <code>.html</code> is appended to the full path.</div>
+  <div class="warn"><strong>Write errors:</strong> If the tool cannot write to the specified or auto-generated path (permission denied, invalid path), an error is printed to the console and that file is skipped. The other output file (text or HTML) is still attempted independently.</div>
+
+  <!-- PERMISSIONS -->
+  <h2 id="permissions">Permissions</h2>
+  <p>Several categories require elevated privileges (<em>Run as Administrator</em>). Without elevation, these sections will return partial data or nothing at all — no error is raised, the subsection output simply stays empty or shows a "not available" message.</p>
+  <p>Categories that benefit from elevation: <code>security</code> (BitLocker, Hyper-V, TPM, Secure Boot, Firewall), <code>tasks</code>, <code>users</code>, <code>virt</code>.</p>
+
+  <!-- CATEGORIES -->
+  <h2 id="categories">Categories: Output Reference</h2>
+  <p>The following sections document each category with a description of the data collected and a representative extract from a real run on a Windows 11 machine (Acer Predator PO3-600, i7-8700, 16 GB RAM).</p>
+
+  <!-- SYSTEM -->
+  <div class="cat-block" id="cat-system">
+    <h3>system</h3>
+    <div class="desc">Machine identity, OS details, uptime, and timezone. This is the default category when none is specified.</div>
+    <div class="label">Data sources</div>
+    <p><code>Win32_ComputerSystem</code>, <code>Win32_ComputerSystemProduct</code>, <code>Win32_SystemEnclosure</code>, <code>Win32_OperatingSystem</code>, <code>Win32_TimeZone</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">SYSTEM</span>
+<span class="sub">--- Identification ---</span>
+Machine name        : PREDATOR
+Domain / Workgroup  : WORKGROUP (workgroup)
+Manufacturer        : Acer
+Model               : Predator PO3-600
+Serial number       : (classified)
+UUID                : (classified)
+Chassis type        : Desktop
+<span class="sub">--- Operating system ---</span>
+OS                  : Microsoft Windows 11 Professional
+Version / Build     : 10.0.26200 (Build 26200)
+Architecture        : 64-bit
+Windows directory   : C:\WINDOWS
+Installation        : 07-06-2025 15:59:55
+Last boot           : 28-05-2026 06:15:48  (uptime: 0d 2h 3m)
+<span class="sub">--- Time zone ---</span>
+Time zone           : (UTC+01:00) Brussels, Copenhagen, Madrid, Paris</div>
+  </div>
+
+  <!-- HARDWARE -->
+  <div class="cat-block" id="cat-hardware">
+    <h3>hardware</h3>
+    <div class="desc">Processor details, motherboard, and BIOS/UEFI firmware information.</div>
+    <div class="label">Data sources</div>
+    <p><code>Win32_Processor</code>, <code>Win32_BaseBoard</code>, <code>Win32_BIOS</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">HARDWARE</span>
+<span class="sub">--- Processor(s) ---</span>
+Name                : Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz
+Manufacturer        : GenuineIntel
+Physical cores      : 6
+Logical cores       : 12
+Base frequency      : 3192 MHz
+Socket              : U3E1
+Architecture        : x64
+L2 cache            : 1536 KB
+L3 cache            : 12288 KB
+<span class="sub">--- Motherboard ---</span>
+Manufacturer        : Acer
+Product             : Predator PO3-600
+Version             : V:1.1
+Serial number       : (classified)
+<span class="sub">--- BIOS / UEFI ---</span>
+Manufacturer        : American Megatrends Inc.
+Version             : R01-C1
+Date                : 08-04-2020 00:00:00
+SMBIOS version      : 3.2</div>
+  </div>
+
+  <!-- MEMORY -->
+  <div class="cat-block" id="cat-memory">
+    <h3>memory</h3>
+    <div class="desc">Physical RAM totals, virtual memory, and per-DIMM slot details (capacity, speed, type, manufacturer).</div>
+    <div class="label">Data sources</div>
+    <p><code>Win32_OperatingSystem</code>, <code>Win32_PhysicalMemory</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">MEMORY</span>
+Total RAM           : 15.92 GB
+Available RAM       : 8.92 GB
+Virtual memory      : 18.29 GB total / 8.80 GB free
+<span class="sub">--- Physical sticks ---</span>
+Slot 1  : BANK 3     8.00 GB  2400 MHz  Type: Unknown  Manufacturer: Kingston  SN: (classified)
+Slot 2  : BANK 2     8.00 GB  2400 MHz  Type: Unknown  Manufacturer: 0000  SN: (classified)
+
+Stick count         : 2</div>
+    <div class="callout"><strong>Note:</strong> The memory type may show as "Unknown" when the WMI class does not return a recognized DDR generation value. This is a WMI limitation, not a tool error.</div>
+  </div>
+
+  <!-- DISK -->
+  <div class="cat-block" id="cat-disk">
+    <h3>disk</h3>
+    <div class="desc">Physical drives (model, size, interface, partitions, serial, status) and logical volumes (drive letter, type, filesystem, total/free space, label).</div>
+    <div class="label">Data sources</div>
+    <p><code>Win32_DiskDrive</code>, <code>Win32_LogicalDisk</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">DISKS AND VOLUMES</span>
+<span class="sub">--- Physical disks ---</span>
+Disk 0 : HFS128G39TND-N210A
+  Size        : 119.24 GB
+  Interface   : SCSI
+  Partitions  : 4
+  SN          : (classified)
+  Status      : OK
+Disk 1 : TOSHIBA DT01ACA100
+  Size        : 931.51 GB
+  Interface   : SCSI
+  Partitions  : 1
+  SN          : (classified)
+  Status      : OK
+Disk 2 : WD My Passport 259F USB Device
+  Size        : 931.48 GB
+  Interface   : USB
+  Partitions  : 1
+  SN          : (classified)
+  Status      : OK
+<span class="sub">--- Logical volumes ---</span>
+C:  [Fixed]  NTFS        117.90 GB total / 4.76 GB free  Label: N/A
+D:  [Fixed]  NTFS        931.51 GB total / 132.43 GB free  Label: Autres
+E:  [CD/DVD]  N/A         N/A total / N/A free  Label: N/A
+F:  [Fixed]  NTFS        931.48 GB total / 295.27 GB free  Label: Backup_2
+G:  [Fixed]  exFAT       931.45 GB total / 110.56 GB free  Label: Backup_1</div>
+  </div>
+
+  <!-- GPU -->
+  <div class="cat-block" id="cat-gpu">
+    <h3>gpu</h3>
+    <div class="desc">Graphics adapter name, manufacturer, VRAM, current resolution and refresh rate, driver version and date.</div>
+    <div class="label">Data sources</div>
+    <p><code>Win32_VideoController</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">GPU</span>
+Name                : NVIDIA GeForce GTX 1060 6GB
+Manufacturer        : NVIDIA
+VRAM                : -1048576 B
+Current resolution  : 1920 x 1080 @ 60 Hz
+Driver              : 32.0.15.7270 dated 03-03-2025 00:00:00
+Status              : OK</div>
+    <div class="warn"><strong>Note:</strong> VRAM may show a negative value (e.g. <code>-1048576 B</code>) for some cards. This is a known WMI reporting quirk for certain NVIDIA configurations and does not indicate a hardware problem.</div>
+  </div>
+
+  <!-- NETWORK -->
+  <div class="cat-block" id="cat-network">
+    <h3>network</h3>
+    <div class="desc">Network interfaces with IPv4/IPv6/MAC addresses, default gateways, DNS servers, routing table, active TCP connections, SMB local shares, mapped network drives, and proxy configuration.</div>
+    <div class="label">Data sources</div>
+    <p>psutil (<code>net_if_addrs</code>, <code>net_if_stats</code>, <code>net_connections</code>), <code>ipconfig /all</code>, <code>route print</code>, <code>net share</code>, <code>net use</code>, Windows Registry</p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">NETWORK</span>
+<span class="sub">--- Network interfaces and IP addresses ---</span>
+[output classified on this machine]
+<span class="sub">--- Mapped network drives ---</span>
+New connections will be remembered.
+
+The list is empty.
+<span class="sub">--- Proxy (current user) ---</span>
+Proxy               : not configured</div>
+  </div>
+
+  <!-- SOFTWARE -->
+  <div class="cat-block" id="cat-software">
+    <h3>software</h3>
+    <div class="desc">Installed applications (name, version, publisher), pulled from the Windows Registry including 32-bit entries, sorted alphabetically. Also lists AppX/Store packages.</div>
+    <div class="label">Data sources</div>
+    <p>Registry (<code>HKLM</code> and <code>HKCU</code> Uninstall keys, including Wow6432Node), PowerShell <code>Get-AppxPackage</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">INSTALLED SOFTWARE</span>
+4K Video Downloader+                               26.0.8.0295          InterPromo GMBH
+7-Zip 24.08 (x64 edition)                          24.08.00.0           Igor Pavlov
+Adobe Acrobat (64-bit)                             26.001.21563         Adobe
+Everything 1.4.1.1030 (x64)                        1.4.1.1030           voidtools
+FileZilla 3.69.6                                   3.69.6               Tim Kosse
+GIMP 3.0.2-1                                       3.0.2.1              The GIMP Team
+Git                                                2.54.0               The Git Development Community
+Google Chrome                                      148.0.7778.179       Google LLC
+Logi Options+                                      2.3.879545           Logitech
+Microsoft Edge                                     148.0.3967.83        Microsoft Corporation
+Mozilla Firefox (x64 en-US)                        138.0.4              Mozilla
+Python 3.13.3 (64-bit)                             3.13.3150.0          Python Software Foundation
+VLC media player                                   3.0.21               VideoLAN
+  ...
+[full list continues alphabetically]</div>
+    <div class="callout"><strong>Tip:</strong> Chrome progressive web apps (PWAs) installed per-profile appear as individual entries named "Gmail", "Google Drive", "Docs", etc. — this is expected and reflects the registry state accurately.</div>
+  </div>
+
+  <!-- SERVICES -->
+  <div class="cat-block" id="cat-services">
+    <h3>services</h3>
+    <div class="desc">Two subsections: all currently running services (name, startup mode), and all stopped services with Automatic startup mode (name, current state). The latter is particularly useful for spotting services that should be running but are not.</div>
+    <div class="label">Data sources</div>
+    <p><code>Win32_Service</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">SERVICES</span>
+<span class="sub">--- Running services ---</span>
+Antivirus Microsoft Defender                  [Auto]
+Application Frame Host                        [Auto]
+Broker Infrastructure                         [Auto]
+Microsoft Defender Antivirus Service          [Auto]
+WLAN AutoConfig                               [Auto]
+Cryptographic Services                        [Auto]
+Print Spooler                                 [Auto]
+SysMain                                       [Auto]
+Windows Search                                [Auto]
+XTUOCDriverService                            [Auto]
+  ... [full list continues]
+<span class="sub">--- Stopped services (automatic startup) ---</span>
+Group Policy Client                           Status: Stopped
+Downloaded Maps Manager                       Status: Stopped
+Intel(R) TPM Provisioning Service             Status: Stopped
+Microsoft Edge Update Service (edgeupdate)    Status: Stopped
+Software Protection                           Status: Stopped
+Google Update Service (gupdate)               Status: Stopped</div>
+  </div>
+
+  <!-- PROCESSES -->
+  <div class="cat-block" id="cat-processes">
+    <h3>processes</h3>
+    <div class="desc">All currently running processes, sorted alphabetically by name. For each process: name, PID, RSS memory usage, and total CPU time (user + system, in seconds).</div>
+    <div class="label">Data sources</div>
+    <p>psutil <code>process_iter</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">RUNNING PROCESSES</span>
+AdobeCollabSync.exe                 PID: 10324    RAM: 29.17 MB   CPU: 25.9s
+chrome.exe                          PID: 15560    RAM: 222.62 MB  CPU: 238.8s
+chrome.exe                          PID: 16068    RAM: 262.63 MB  CPU: 179.8s
+chrome.exe                          PID: 16580    RAM: 270.04 MB  CPU: 48.3s
+chrome.exe                          PID: 20748    RAM: 324.83 MB  CPU: 59.3s
+dwm.exe                             PID: 1704     RAM: 92.30 MB   CPU: 410.0s
+explorer.exe                        PID: 9968     RAM: 344.11 MB  CPU: 87.2s
+logioptionsplus_agent.exe           PID: 10580    RAM: 122.94 MB  CPU: 130.4s
+MemCompression                      PID: 668      RAM: 363.42 MB  CPU: 4.6s
+MsMpEng.exe                         PID: 4760     RAM: 313.55 MB  CPU: 290.2s
+python.exe                          PID: 1460     RAM: 42.56 MB   CPU: 6.2s
+System                              PID: 4        RAM: 164.00 KB  CPU: 480.4s
+System Idle Process                 PID: 0        RAM: 8.00 KB    CPU: 83884.6s
+thunderbird.exe                     PID: 3996     RAM: 216.71 MB  CPU: 26.5s
+  ... [full list continues]</div>
+    <div class="callout"><strong>Note:</strong> CPU time is cumulative since process start, not a current utilization percentage. The <code>perf</code> category provides instantaneous CPU load per core.</div>
+  </div>
+
+  <!-- STARTUP -->
+  <div class="cat-block" id="cat-startup">
+    <h3>startup</h3>
+    <div class="desc">Programs configured to run at startup, from three sources: WMI startup commands, HKLM Run registry key, and HKCU Run registry key. Useful for auditing persistence and auto-launch entries.</div>
+    <div class="label">Data sources</div>
+    <p>WMI <code>Win32_StartupCommand</code>, <code>HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</code>, <code>HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">STARTUP PROGRAMS</span>
+<span class="sub">--- WMI Win32_StartupCommand entries ---</span>
+Adobe Acrobat Synchronizer  User: PREDATOR\user     Command: "C:\Program Files\Adobe\Acrobat DC\Acrobat\AdobeCollabSync.exe"
+Everything                  User: Public            Command: "C:\Program Files\Everything\Everything.exe" -startup
+Open-Shell Start Menu       User: Public            Command: "C:\Program Files\Open-Shell\StartMenu.exe" -autorun
+RtkAudUService              User: Public            Command: "C:\WINDOWS\System32\RtkAudUService64.exe" -background
+SecurityHealth              User: Public            Command: %windir%\system32\SecurityHealthSystray.exe
+<span class="sub">--- Registry (HKLM\...\Run) ---</span>
+Everything                               "C:\Program Files\Everything\Everything.exe" -startup
+Open-Shell Start Menu                    "C:\Program Files\Open-Shell\StartMenu.exe" -autorun
+RtkAudUService                           "C:\WINDOWS\System32\RtkAudUService64.exe" -background
+SecurityHealth                           %windir%\system32\SecurityHealthSystray.exe
+<span class="sub">--- Registry (HKCU\...\Run) ---</span>
+Adobe Acrobat Synchronizer               "C:\Program Files\Adobe\Acrobat DC\Acrobat\AdobeCollabSync.exe"</div>
+  </div>
+
+  <!-- SECURITY -->
+  <div class="cat-block" id="cat-security">
+    <h3>security</h3>
+    <div class="desc">Security posture snapshot: Windows Defender status and signature freshness, firewall profiles (domain/private/public), BitLocker volume encryption state, Secure Boot, and TPM properties.</div>
+    <div class="label">Data sources</div>
+    <p>PowerShell: <code>Get-MpComputerStatus</code>, <code>Get-NetFirewallProfile</code>, <code>Get-BitLockerVolume</code>, <code>Confirm-SecureBootUEFI</code>, <code>Get-Tpm</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">SECURITY</span>
+<span class="sub">--- Windows Defender ---</span>
+AntivirusEnabled              : True
+AntivirusSignatureVersion     : 1.451.138.0
+AntivirusSignatureLastUpdated : 28/05/2026 00:51:41
+RealTimeProtectionEnabled     : True
+AntispywareEnabled            : True
+<span class="sub">--- Firewall ---</span>
+Name    Enabled DefaultInboundAction DefaultOutboundAction
+----    ------- -------------------- ---------------------
+Domain     True        NotConfigured         NotConfigured
+Private    True        NotConfigured         NotConfigured
+Public     True        NotConfigured         NotConfigured
+<span class="sub">--- BitLocker ---</span>
+MountPoint   VolumeStatus ProtectionStatus
+----------   ------------ ----------------
+C:         FullyDecrypted              Off
+D:         FullyDecrypted              Off
+<span class="sub">--- Secure Boot ---</span>
+Secure Boot : Enabled
+<span class="sub">--- TPM ---</span>
+TpmPresent                : True
+TpmReady                  : True
+TpmEnabled                : True
+TpmActivated              : True
+ManufacturerIdTxt         : INTC
+ManufacturerVersion       : 403.1.0.0</div>
+    <div class="warn"><strong>Requires elevation:</strong> BitLocker, firewall, TPM, and Secure Boot data require Administrator privileges. Without elevation, these subsections will be empty.</div>
+  </div>
+
+  <!-- UPDATES -->
+  <div class="cat-block" id="cat-updates">
+    <h3>updates</h3>
+    <div class="desc">Installed Windows updates and hotfixes (KB articles), sorted by installation date with the most recent first.</div>
+    <div class="label">Data sources</div>
+    <p><code>Win32_QuickFixEngineering</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">INSTALLED UPDATES</span>
+KB5092762       5/12/2026       NT AUTHORITY\System            Security Update
+KB5092734       5/27/2026       NT AUTHORITY\System            Update
+KB5089573       5/27/2026       NT AUTHORITY\System            Update
+KB5092427       5/27/2026       NT AUTHORITY\System            Update
+KB5054156       9/30/2025       NT AUTHORITY\System            Update</div>
+    <div class="callout"><strong>Note:</strong> <code>Win32_QuickFixEngineering</code> only lists hotfixes deployed via the Windows Update legacy path. Feature updates and major Windows upgrades are not enumerated here.</div>
+  </div>
+
+  <!-- DRIVERS -->
+  <div class="cat-block" id="cat-drivers">
+    <h3>drivers</h3>
+    <div class="desc">All installed signed PnP drivers with device name, driver version, and manufacturer. Sorted alphabetically by device name. Entries with an empty device name are excluded.</div>
+    <div class="label">Data sources</div>
+    <p><code>Win32_PnPSignedDriver</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">INSTALLED DRIVERS</span>
+ACPI Fan                                      10.0.26100.1150      (Standard system devices)
+Acer System Firmware R01-C1                   5.35.12.10           Acer Inc.
+Brother HL-4150CDN series                     1.7.0.0              Brother
+Disk drive                                    10.0.26100.8521      (Standard disk drives)
+HID Keyboard Device                           10.0.26100.8521      (Standard keyboards)
+Intel(R) Wireless-AC 9462                     22.10.0.7            Intel Corporation
+Intel(R) Wireless Bluetooth(R)                23.120.0.4           Intel Corporation
+NVIDIA GeForce GTX 1060 6GB                   32.0.15.7270         NVIDIA
+Realtek Audio                                 6.0.1.8627           Microsoft
+Realtek Audio Universal Service               1.0.0.151            Realtek
+Trusted Platform Module 2.0                   10.0.26100.8521      (Standard)
+USB Root Hub (USB 3.0)                        10.0.26100.8521      (Standard USB HUBs)
+  ... [full list continues]</div>
+  </div>
+
+  <!-- USERS -->
+  <div class="cat-block" id="cat-users">
+    <h3>users</h3>
+    <div class="desc">Local user accounts (name, enabled state, last logon), loaded user profiles (local path, loaded status), and the current session user with administrator status.</div>
+    <div class="label">Data sources</div>
+    <p>PowerShell <code>Get-LocalUser</code>, WMI <code>Win32_UserProfile</code>, environment variables (<code>USERNAME</code>, <code>USERDOMAIN</code>), Windows API <code>IsUserAnAdmin</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">USERS</span>
+<span class="sub">--- Local accounts ---</span>
+Name                Enabled LastLogon
+----                ------- ---------
+Administrateur        False 13/10/2024 16:31:13
+client                 True 28/05/2026 06:21:29
+DefaultAccount        False
+Invité                False
+WDAGUtilityAccount    False
+<span class="sub">--- User profiles ---</span>
+C:\WINDOWS\ServiceProfiles\MariaDB       Loaded: False
+C:\Users\user                            Loaded: True
+<span class="sub">--- Current user ---</span>
+Account             : PREDATOR\user
+Administrator       : True</div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="cat-block" id="cat-tasks">
+    <h3>tasks</h3>
+    <div class="desc">Scheduled tasks that are not disabled and fall outside the <code>\Microsoft\*</code> namespace, sorted by task path. This focuses on third-party and user-created tasks.</div>
+    <div class="label">Data sources</div>
+    <p>PowerShell <code>Get-ScheduledTask</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">SCHEDULED TASKS</span>
+TaskPath                              TaskName                                              State
+--------                              --------                                              -----
+\                                     Adobe Acrobat Update Task                             Ready
+\                                     BACKUP 2026                                           Ready
+\                                     BACKUP 2 2026                                         Ready
+\                                     MicrosoftEdgeUpdateTaskMachineCore                    Ready
+\                                     MicrosoftEdgeUpdateTaskMachineUA                      Ready
+\                                     npcapwatchdog                                         Ready
+\                                     NVIDIA App SelfUpdate_...                             Ready
+\                                     PredatorSense                                         Ready
+\GoogleSystem\GoogleUpdater\          GoogleUpdaterTaskSystem149.0.7814.0{...}               Ready
+\Mozilla\                             Firefox Default Browser Agent 308046B0AF4A39CB        Ready
+\Mozilla\                             Firefox Background Update 308046B0AF4A39CB            Ready</div>
+  </div>
+
+  <!-- SHARES -->
+  <div class="cat-block" id="cat-shares">
+    <h3>shares</h3>
+    <div class="desc">Local SMB shares (name, path, description) and mapped network drives (local drive letter, remote UNC path, connection state).</div>
+    <div class="label">Data sources</div>
+    <p><code>Win32_Share</code>, <code>Win32_NetworkConnection</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">NETWORK SHARES</span>
+<span class="sub">--- Local SMB shares ---</span>
+[output classified on this machine]
+<span class="sub">--- Mapped network drives ---</span>
+[none configured on this machine]</div>
+  </div>
+
+  <!-- EVENTS -->
+  <div class="cat-block" id="cat-events">
+    <h3>events</h3>
+    <div class="desc">The 20 most recent errors and warnings from the System event log, followed by the 20 most recent from the Application event log. Each entry includes timestamp, type, Event ID, and message text.</div>
+    <div class="label">Data sources</div>
+    <p>PowerShell <code>Get-EventLog</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">RECENT EVENTS</span>
+<span class="sub">--- Log: System ---</span>
+TimeGenerated : 28/05/2026 06:36:29
+EntryType     : Warning
+EventID       : 10016
+Message       : The description for Event ID '10016' from source 'DCOM' cannot be found...
+
+TimeGenerated : 28/05/2026 06:21:17
+EntryType     : Error
+EventID       : 1801
+Message       : Updated Secure Boot certificates are available on this device but have
+                not yet been applied to the firmware...
+<span class="sub">--- Log: Application ---</span>
+TimeGenerated : 27/05/2026 08:53:45
+EntryType     : Error
+EventID       : 8193
+Message       : Volume Shadow Copy Service error: Error calling CoCreateInstance routine.
+                hr = 0x8007045b, A system shutdown is in progress.
+
+TimeGenerated : 27/05/2026 07:02:18
+EntryType     : Error
+EventID       : 1000
+Message       : Faulting application name: MicrosoftEdgeSH.exe, version: 11.0.26100.8115
+                Exception code: 0xc0000409
+                ...</div>
+    <div class="warn"><strong>Note:</strong> The section header mentions "last 24 hours" as an indication of intent, but the query actually retrieves the 20 most recent entries without a date filter. On a quiet machine, these entries may span several days.</div>
+  </div>
+
+  <!-- PERF -->
+  <div class="cat-block" id="cat-perf">
+    <h3>perf</h3>
+    <div class="desc">Instantaneous performance snapshot: CPU load per logical core (1-second sample), overall CPU load, physical memory usage, swap usage, and disk usage per mounted volume.</div>
+    <div class="label">Data sources</div>
+    <p>psutil: <code>cpu_percent</code>, <code>virtual_memory</code>, <code>swap_memory</code>, <code>disk_partitions</code>, <code>disk_usage</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">PERFORMANCE (snapshot)</span>
+<span class="sub">--- CPU ---</span>
+Core 0   : 6.2%
+Core 1   : 1.6%
+Core 2   : 1.6%
+Core 3   : 4.7%
+Core 4   : 7.8%
+Core 5   : 1.6%
+Core 6   : 1.6%
+Core 7   : 6.2%
+Core 8   : 4.7%
+Core 9   : 0.0%
+Core 10  : 1.6%
+Core 11  : 0.0%
+Global load         : 10.4%
+<span class="sub">--- Memory ---</span>
+Total               : 15.92 GB
+Used                : 7.11 GB (44.6%)
+Free                : 8.81 GB
+Swap total          : 2.38 GB
+Swap used           : 98.00 MB (4.0%)
+<span class="sub">--- Disks ---</span>
+C:\  113.14 GB / 117.90 GB used (96.0%)  [NTFS]
+D:\  799.08 GB / 931.51 GB used (85.8%)  [NTFS]
+E:\  access denied
+F:\  636.21 GB / 931.48 GB used (68.3%)  [NTFS]
+G:\  820.89 GB / 931.45 GB used (88.1%)  [exFAT]</div>
+    <div class="callout"><strong>Tip:</strong> A volume showing "access denied" means the tool could not read its usage data, typically a CD/DVD drive with no media or a volume with restricted permissions. The entry is still reported rather than silently skipped.</div>
+  </div>
+
+  <!-- VIRT -->
+  <div class="cat-block" id="cat-virt">
+    <h3>virt</h3>
+    <div class="desc">Virtualization detection: whether this machine appears to be a VM (checked against VMware, VirtualBox, Hyper-V, QEMU, KVM, Xen, Microsoft Corporation strings). Also reports Hyper-V feature state, hosted VMs if the role is active, and WSL distributions.</div>
+    <div class="label">Data sources</div>
+    <p>WMI <code>Win32_ComputerSystem</code>, <code>Win32_BIOS</code>; PowerShell <code>Get-WindowsOptionalFeature</code>, <code>Get-VM</code>; <code>wsl --list --verbose</code></p>
+    <div class="label">Sample output</div>
+    <div class="terminal">
+<span class="th">VIRTUALIZATION</span>
+<span class="sub">--- Detection: is this machine a VM? ---</span>
+VM detected         : no (probably physical)
+<span class="sub">--- Hyper-V ---</span>
+FeatureName : Microsoft-Hyper-V
+State       : Disabled
+<span class="sub">--- Hyper-V virtual machines (if role is active) ---</span>
+[Hyper-V role disabled — no VMs listed]
+<span class="sub">--- WSL ---</span>
+WSL : not installed or not accessible</div>
+  </div>
+
+  <!-- NOTES & TIPS -->
+  <h2 id="notes" style="display:none"></h2>
+  <h2 id="remote">Remote Collection</h2>
+  <p>Use <code>--computer</code> to target a remote Windows machine:</p>
+  <pre><code>python DTLsaysWhat.py hardware --computer 192.168.1.42
+python DTLsaysWhat.py all --computer WORKSTATION01</code></pre>
+  <p>Remote collection relies on WMI over the network and requires appropriate permissions on the target machine. The following categories always run locally regardless of <code>--computer</code>: <code>security</code>, <code>users</code>, <code>tasks</code>, <code>software</code> (AppX packages), <code>events</code>, <code>virt</code>.</p>
+
+  <h2 id="encoding">Encoding</h2>
+  <p>On French Windows systems, <code>cmd.exe</code> defaults to OEM code page 850. The tool detects and handles this automatically. To guarantee correct display of accented characters, either:</p>
+  <ul>
+    <li>invoke the script with <code>python -X utf8 DTLsaysWhat.py</code>, or</li>
+    <li>set the environment variable <code>PYTHONUTF8=1</code> before running.</li>
+  </ul>
+
+  <h2 id="limitations">Known Limitations</h2>
+  <ul>
+    <li><strong>Windows only.</strong> The tool imports <code>wmi</code>, <code>winreg</code>, and calls Windows-specific APIs. It will not run on Linux or macOS.</li>
+    <li><strong>Remote collection scope.</strong> <code>--computer</code> does not extend to PowerShell-based subsections (<code>security</code>, <code>users</code>, <code>tasks</code>, AppX software, <code>events</code>, <code>virt</code>), which always query the local machine.</li>
+    <li><strong>Elevation required.</strong> Running without administrator privileges produces no errors for restricted sections; their output will simply be empty or show a "not available" message.</li>
+    <li><strong><code>perf</code> is a snapshot.</strong> CPU percentages are sampled over a 1-second interval per call. There is no continuous monitoring mode.</li>
+    <li><strong><code>events</code> has no date filter.</strong> The section retrieves the 20 most recent errors and warnings regardless of age. The "last 24 hours" label in the section header reflects intent only, not an applied filter.</li>
+    <li><strong>Memory type.</strong> DDR generation may show as "Unknown" for some DIMM configurations due to a WMI reporting limitation.</li>
+    <li><strong>VRAM reporting.</strong> Some NVIDIA configurations cause <code>Win32_VideoController</code> to return a negative VRAM value. This is a WMI quirk, not a tool defect.</li>
+  </ul>
+
+</main>
+
+<script>
+  const sections = document.querySelectorAll('[id]');
+  const navLinks = document.querySelectorAll('nav a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(a => a.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
