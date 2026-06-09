@@ -1,6 +1,6 @@
 # DTLsaysWhat
 
-DTLsaysWhat est un outil d'inventaire système Windows inspiré du célèbre **WHAT** de DEC VAX/VMS.
+DTLsaysWhat est un outil d'inventaire système Windows inspiré du célèbre **WHAT** écrit par Stanley Rabinowitz pour DEC VAX/VMS dans les années 80.
 
 L'objectif du projet est de fournir, à partir d'une simple commande, un rapport complet et lisible sur l'état d'une machine Windows, sans installation complexe ni dépendance à une infrastructure centrale.
 
