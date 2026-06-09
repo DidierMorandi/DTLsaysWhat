@@ -6,3 +6,8 @@ DTLsaysWhat_20*.html
 
 venv/
 .env
+/logs/
+
+/build/
+
+/dist/

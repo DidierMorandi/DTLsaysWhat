@@ -747,7 +747,7 @@ def get_tasks_info(c):
 def get_shares_info(c):
     header(tr("NETWORK_SHARES"))
 
-    section("tr(Partages locaux (SMB)"))
+    section(tr("Partages locaux (SMB)"))
     for share in c.Win32_Share():
         out(f"{safe_str(share.Name):<20} {safe_str(share.Path):<40} {safe_str(share.Description)}")
 
