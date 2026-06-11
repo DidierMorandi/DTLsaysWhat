@@ -40,6 +40,8 @@ python dtlsayswhat.py all --lang en
 """
 
 CURRENT_LANG = "fr"
+APP_NAME = "DTLsaysWhat"
+APP_VERSION = "v1.0-1"
 
 I18N = {
     "fr": {
@@ -1009,7 +1011,7 @@ def generate_html(category, computer, generated_at):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DTLsaysWhat :: {_esc(computer)}</title>
+<title>{APP_NAME} {APP_VERSION} :: {_esc(computer)}</title>
 <style>{_HTML_CSS}</style>
 </head>
 <body>
@@ -1020,7 +1022,7 @@ def generate_html(category, computer, generated_at):
 </nav>
 <div id="main">
   <div class="meta">
-    DTLsaysWhat &nbsp;|&nbsp; Machine : {_esc(computer)}
+    {APP_NAME} {APP_VERSION} &nbsp;|&nbsp; Machine : {_esc(computer)}
     &nbsp;|&nbsp; Catégorie : {_esc(category.upper())}
     &nbsp;|&nbsp; {_esc(generated_at)}
   </div>
@@ -1042,6 +1044,7 @@ def banner(category, computer):
     out(r"   \ V  V / |_||_|/ ___ \| |   ")
     out(r"    \_/\_/  |_||_/_/   \_\_|   ")
     out()
+    out(f"{APP_NAME} {APP_VERSION}")
     now = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     out(f"Machine : {computer}   Date : {now}")
     out(f"Catégorie sélectionnée : {category.upper()}")
@@ -1075,6 +1078,8 @@ DISPATCH = {
 
 
 def main():
+    if os.name == "nt":
+        os.system(f"title {APP_NAME} {APP_VERSION}")
     parser = argparse.ArgumentParser(
         prog="what",
         description="WHAT - Outil d'inventaire système Windows (inspiré du What de DEC VAX/VMS)"
