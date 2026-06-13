@@ -41,7 +41,7 @@ python dtlsayswhat.py all --lang en
 
 CURRENT_LANG = "fr"
 APP_NAME = "DTLsaysWhat"
-APP_VERSION = "v1.0-1"
+APP_VERSION = "v1.0-2"
 
 I18N = {
     "fr": {
