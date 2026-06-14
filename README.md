@@ -105,3 +105,16 @@ DTLsaysWhat privilégie :
 ## Licence
 
 Ce projet est distribué sous licence MIT.
+
+## Update - 14 June 2026
+
+The current code reports `APP_VERSION = "v1.0-2"` in `DTLsaysWhat.py`.
+
+New and confirmed points:
+
+- The tool accepts `--lang fr|en` for the main labels.
+- `--computer NAME_OR_IP` can query a remote machine through WMI when permissions and network access allow it.
+- `--output` / `-o` writes a text report.
+- Available categories include `system`, `hardware`, `memory`, `disk`, `gpu`, `network`, `software`, `services`, `processes`, `startup`, `security`, `updates`, `drivers`, `users`, `tasks`, `shares`, `events`, `perf`, `virt`, and `all`.
+- The repository now contains user guides and reference manuals in French and English.
+- `DTLsaysWhat_PREDATOR_example.html` is present as an example HTML output.
