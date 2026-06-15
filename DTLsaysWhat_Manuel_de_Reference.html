@@ -392,7 +392,7 @@
   <a href="#cat-events">events</a>
   <a href="#cat-perf">perf</a>
   <a href="#cat-virt">virt</a>
-  <a class="nav-section-link" href="#autres">Autres</a>
+  <a class="nav-section-link" href="#autres">Autrès</a>
   <a href="#exit">Comportement à la sortie</a>
   <a href="#limitations">Limitations connues</a>
 </nav>
@@ -423,7 +423,7 @@
   <p>Certaines catégories (Sécurité, BitLocker, Hyper-V, TPM, Démarrage sécurisé, Tâches planifiées, Pare-feu) peuvent nécessiter l'exécution du script avec des privilèges élevés (<em>Exécuter en tant qu'administrateur</em>). Sans élévation, ces sections peuvent ne retourner que des données partielles ou aucune donnée.</p>
 
   <h3>Encodage</h3>
-  <p>Sur les systèmes Windows en français, <code>cmd.exe</code> utilise par défaut la page de codes OEM 850. L'outil détecte et gère ce cas automatiquement. Pour garantir l'affichage correct des caractères accentués, il est recommandé soit :</p>
+  <p>Sur les systèmes Windows en français, <code>cmd.exe</code> utilisé par défaut la page de codes OEM 850. L'outil détecte et gère ce cas automatiquement. Pour garantir l'affichage correct des caractères accentués, il est recommandé soit :</p>
   <ul>
     <li>d'invoquer le script avec <code>python -X utf8 DTLsaysWhat.py</code>, ou</li>
     <li>de définir la variable d'environnement <code>PYTHONUTF8=1</code> avant l'exécution.</li>
@@ -431,7 +431,7 @@
 
   <h2 id="syntax">Syntaxe de la commande</h2>
   <pre><code>python DTLsaysWhat.py [CATÉGORIE] [--output FICHIER] [--computer NOM_OU_IP]</code></pre>
-  <p>Tous les arguments sont optionnels. Sans argument, l'outil utilise par défaut la catégorie <code>system</code> et cible la machine locale.</p>
+  <p>Tous les arguments sont optionnels. Sans argument, l'outil utilisé par défaut la catégorie <code>system</code> et cible la machine locale.</p>
 
   <h2 id="arguments">Arguments</h2>
 
@@ -447,7 +447,7 @@
       <tr><td>memory</td><td>Totaux RAM, mémoire virtuelle, barrettes physiques (slots DIMM)</td></tr>
       <tr><td>disk</td><td>Disques physiques et volumes logiques</td></tr>
       <tr><td>gpu</td><td>Cartes graphiques, VRAM, résolution courante, version du pilote</td></tr>
-      <tr><td>network</td><td>Interfaces réseau, adresses IP, table de routage, DNS, connexions TCP actives, partages SMB, lecteurs mappés, paramètres proxy</td></tr>
+      <tr><td>network</td><td>Interfaces réseau, adresses IP, table de routage, DNS, connexions TCP actives, partages SMB, lecteurs mappés, paramètrès proxy</td></tr>
       <tr><td>software</td><td>Applications installées (depuis le registre), paquets AppX/Store</td></tr>
       <tr><td>services</td><td>Services en cours d'exécution, services arrêtés avec démarrage automatique</td></tr>
       <tr><td>processes</td><td>Tous les processus en cours avec PID, utilisation RAM, temps CPU</td></tr>
@@ -483,7 +483,7 @@
   <p><strong>WMI (Windows Management Instrumentation) :</strong> Utilisé pour la majorité des données matérielles, système d'exploitation, logiciels, services, pilotes, mises à jour et utilisateurs. Les requêtes WMI peuvent cibler une machine distante lorsque <code>--computer</code> est spécifié.</p>
   <p><strong>Applets de commande PowerShell :</strong> Utilisées pour les catégories sans équivalent WMI direct ou lorsque PowerShell fournit une sortie plus riche. Catégories concernées : <code>security</code>, <code>users</code>, <code>tasks</code>, <code>software</code> (paquets AppX), <code>events</code>, <code>virt</code>. PowerShell est invoqué avec l'encodage de sortie UTF-8 imposé.</p>
   <p><strong>Commandes natives Windows :</strong> Utilisées de manière sélective dans la catégorie <code>network</code> : <code>ipconfig /all</code> pour les passerelles et les DNS, <code>route print</code> pour la table de routage, <code>net share</code> et <code>net use</code> pour les partages SMB et les lecteurs mappés.</p>
-  <p><strong>Registre Windows :</strong> Utilisé pour les paramètres proxy (<code>HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings</code>), les entrées de démarrage (<code>HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</code>, <code>HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</code>) et la détection de la page de codes OEM.</p>
+  <p><strong>Registre Windows :</strong> Utilisé pour les paramètrès proxy (<code>HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings</code>), les entrées de démarrage (<code>HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</code>, <code>HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run</code>) et la détection de la page de codes OEM.</p>
   <p><strong>psutil :</strong> Utilisé pour l'énumération des processus en temps réel, les statistiques des interfaces réseau, les connexions TCP actives et les métriques de performance instantanées (CPU par cœur, mémoire, utilisation disque).</p>
 
   <h2 id="categories">Catégories : données collectées</h2>
@@ -501,7 +501,7 @@
     <div class="label">Requêtes WMI</div>
     <p><code>Win32_Processor</code>, <code>Win32_BaseBoard</code>, <code>Win32_BIOS</code></p>
     <div class="label">Champs rapportés</div>
-    <p>Nom du processeur, fabricant, nombre de cœurs physiques et logiques, fréquence de base, désignation du socket, architecture, tailles des caches L2 et L3 ; fabricant de la carte mère, nom du produit, version, numéro de série ; fabricant du BIOS/UEFI, version SMBIOS, date de publication.</p>
+    <p>Nom du processeur, fabricant, nombre de cœurs physiques et logiques, fréquence de base, désignation du socket, architecture, tailles des cachés L2 et L3 ; fabricant de la carte mère, nom du produit, version, numéro de série ; fabricant du BIOS/UEFI, version SMBIOS, date de publication.</p>
   </div>
 
   <div class="cat-block" id="cat-memory">
@@ -533,7 +533,7 @@
     <div class="label">Sources de données</div>
     <p>psutil (<code>net_if_addrs</code>, <code>net_if_stats</code>, <code>net_connections</code>), <code>ipconfig /all</code>, <code>route print</code>, <code>net share</code>, <code>net use</code>, Registre Windows</p>
     <div class="label">Champs rapportés</div>
-    <p>Par interface : nom, état (actif/inactif), vitesse de liaison, adresses IPv4/IPv6/MAC ; passerelles par défaut ; serveurs DNS configurés ; table de routage complète ; connexions TCP établies (adresse et port local et distant) ; partages SMB locaux ; lecteurs réseau mappés ; configuration proxy (activé/désactivé, adresse du serveur).</p>
+    <p>Par interface : nom, état (actif/inactif), vitesse de liaison, adresses IPv4/IPv6/MAC ; passerelles par défaut ; serveurs DNS configurés ; table de routage complète ; connexions TCP établiés (adresse et port local et distant) ; partages SMB locaux ; lecteurs réseau mappés ; configuration proxy (activé/désactivé, adresse du serveur).</p>
   </div>
 
   <div class="cat-block" id="cat-software">
