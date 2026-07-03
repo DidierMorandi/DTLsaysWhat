@@ -1,0 +1,30 @@
+[
+  {
+    "provider": "dcom",
+    "event_id": 10001,
+    "severity": "ignore",
+    "cause": "Erreur DCOM fréquente, souvent liée à Copilot ou à un composant Windows moderne.",
+    "action": "Aucune action si le poste fonctionne normalement."
+  },
+  {
+    "provider": "microsoft-windows-distributedcom",
+    "event_id": 10001,
+    "severity": "ignore",
+    "cause": "Erreur DCOM fréquente, souvent liée à Copilot ou à un composant Windows moderne.",
+    "action": "Aucune action si le poste fonctionne normalement."
+  },
+  {
+    "provider": "vbscriptdeprecationalert",
+    "event_id": 4096,
+    "severity": "plan",
+    "cause": "Un script utilise encore VBScript.",
+    "action": "Remplacer le script par PowerShell ou par une tâche planifiée moderne."
+  },
+  {
+    "provider": "disk",
+    "event_id": 153,
+    "severity": "watch",
+    "cause": "Temps de réponse du stockage élevé ou commande disque réessayée.",
+    "action": "Surveiller le disque, les câbles, le contrôleur et l'état SMART si l'événement revient."
+  }
+]

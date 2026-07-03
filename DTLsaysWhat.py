@@ -24,13 +24,17 @@ Note : lancer avec  python -X utf8 what.py <categorie>
 """
 
 import argparse
+import collections
 import ctypes
 import datetime
+import ipaddress
 import io
+import json
 import os
 import socket
 import subprocess
 import sys
+import traceback
 import winreg
 
 """
@@ -160,6 +164,32 @@ output_lines = []
 html_entries = []
 
 
+def get_application_dir():
+    """Retourne le dossier du script, ou celui de l'exécutable PyInstaller."""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def use_application_dir_when_frozen():
+    """Évite les chemins relatifs instables quand l'exe est lancé par raccourci."""
+    if not getattr(sys, "frozen", False):
+        return
+    try:
+        os.chdir(get_application_dir())
+    except OSError:
+        pass
+
+
+def pause_before_closing():
+    if os.name != "nt" or not getattr(sys, "frozen", False):
+        return
+    try:
+        input("\nAppuyez sur Entrée pour fermer cette fenêtre...")
+    except (EOFError, KeyboardInterrupt):
+        os.system("pause")
+
+
 def out(line=""):
     output_lines.append(line)
     html_entries.append({'type': 'line', 'text': line})
@@ -198,6 +228,354 @@ def fmt_bytes(n):
     if n >= 1 << 10:
         return f"{n / (1 << 10):.2f} KB"
     return f"{n} B"
+
+
+SERVICE_PORTS = {
+    20: "FTP",
+    21: "FTP",
+    22: "SSH",
+    25: "SMTP",
+    53: "DNS",
+    80: "HTTP",
+    110: "POP3",
+    143: "IMAP",
+    443: "HTTPS",
+    465: "SMTPS",
+    587: "SMTP",
+    993: "IMAPS",
+    995: "POP3S",
+    3389: "RDP",
+    5228: "notifications push",
+}
+
+SERVICE_NETWORKS = [
+    ("Cloudflare", ("1.1.1.0/24", "1.0.0.0/24", "104.16.0.0/12", "172.64.0.0/13", "2606:4700::/32", "2a06:98c0::/29")),
+    ("Google", ("8.8.8.0/24", "8.8.4.0/24", "142.250.0.0/15", "172.217.0.0/16", "216.58.192.0/19", "2a00:1450::/32", "2607:f8b0::/32")),
+    ("Meta (Facebook)", ("31.13.64.0/18", "57.144.0.0/14", "157.240.0.0/16", "179.60.192.0/22", "2a03:2880::/32")),
+    ("Microsoft", ("13.64.0.0/11", "20.0.0.0/8", "40.64.0.0/10", "52.96.0.0/12", "2603:1000::/24")),
+]
+
+SERVICE_IP_NETWORKS = [
+    (service, tuple(ipaddress.ip_network(net) for net in networks))
+    for service, networks in SERVICE_NETWORKS
+]
+
+PROCESS_SERVICES = {
+    "chrome.exe": "Navigation web (Chrome)",
+    "msedge.exe": "Navigation web (Edge)",
+    "firefox.exe": "Navigation web (Firefox)",
+    "brave.exe": "Navigation web (Brave)",
+    "opera.exe": "Navigation web (Opera)",
+    "outlook.exe": "Microsoft (Outlook)",
+    "teams.exe": "Microsoft (Teams)",
+    "onedrive.exe": "Microsoft (OneDrive)",
+    "thunderbird.exe": "Messagerie (Thunderbird)",
+}
+
+
+def is_local_address(ip):
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return (
+        addr.is_private
+        or addr.is_loopback
+        or addr.is_link_local
+        or addr.is_multicast
+        or addr.is_reserved
+        or addr.is_unspecified
+    )
+
+
+def protocol_from_port(port):
+    return SERVICE_PORTS.get(port, f"port {port}")
+
+
+def process_name_from_pid(pid):
+    if not pid:
+        return ""
+    try:
+        return psutil.Process(pid).name().lower()
+    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+        return ""
+
+
+def service_from_connection(ip, protocol, process_name):
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        addr = None
+
+    for service, networks in SERVICE_IP_NETWORKS:
+        if addr is None:
+            continue
+        if any(addr in network for network in networks):
+            if service == "Google" and protocol == "IMAPS":
+                return "Google (Gmail)"
+            if service == "Microsoft" and process_name == "outlook.exe":
+                return "Microsoft (Outlook)"
+            return service
+
+    if process_name in PROCESS_SERVICES:
+        return PROCESS_SERVICES[process_name]
+    if protocol == "IMAPS":
+        return "Messagerie"
+    if protocol == "HTTPS":
+        return "Service web"
+    return "Service Internet"
+
+
+def pluralize_connection(count):
+    return "connexion" if count == 1 else "connexions"
+
+
+def format_connection_summary(service, protocol, count):
+    label = f"{service} "
+    details = f"{count} {pluralize_connection(count)} {protocol}"
+    dots = "." * max(1, 34 - len(label))
+    return f"{label}{dots} {details}"
+
+
+def first_pid(pids):
+    return min(pids) if pids else "N/A"
+
+
+EVENT_SEVERITY_TITLES = {
+    "ignore": "A ignorer",
+    "plan": "A planifier",
+    "watch": "A surveiller",
+    "other": "Autres événements",
+}
+
+EVENT_SEVERITY_LABELS = {
+    "ignore": "faible",
+    "plan": "à planifier",
+    "watch": "à surveiller",
+    "other": "non classée",
+}
+
+
+def normalize_event_provider(provider):
+    if provider is None:
+        return ""
+    return str(provider).strip().lower().replace(" ", "")
+
+
+def event_knowledge_paths():
+    paths = [os.path.join(get_application_dir(), "events.json")]
+    bundle_dir = getattr(sys, "_MEIPASS", None)
+    if bundle_dir:
+        paths.append(os.path.join(bundle_dir, "events.json"))
+    return list(dict.fromkeys(paths))
+
+
+def load_event_knowledge():
+    entries = None
+    for path in event_knowledge_paths():
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                entries = json.load(f)
+            break
+        except (OSError, json.JSONDecodeError):
+            continue
+    if entries is None:
+        return {}
+
+    knowledge = {}
+    if not isinstance(entries, list):
+        return knowledge
+
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        provider = normalize_event_provider(entry.get("provider"))
+        try:
+            event_id = int(entry.get("event_id"))
+        except (TypeError, ValueError):
+            continue
+        severity = entry.get("severity")
+        if severity not in EVENT_SEVERITY_TITLES:
+            severity = "other"
+        knowledge[(provider, event_id)] = {
+            "severity": severity,
+            "cause": str(entry.get("cause") or "").strip(),
+            "action": str(entry.get("action") or "").strip(),
+        }
+    return knowledge
+
+
+EVENT_KNOWLEDGE = load_event_knowledge()
+
+
+def event_knowledge(provider, event_id):
+    normalized_provider = normalize_event_provider(provider)
+    try:
+        event_id = int(event_id)
+    except (TypeError, ValueError):
+        return None
+
+    exact = EVENT_KNOWLEDGE.get((normalized_provider, event_id))
+    if exact:
+        return exact
+
+    for (known_provider, known_id), info in EVENT_KNOWLEDGE.items():
+        if known_id == event_id and known_provider in normalized_provider:
+            return info
+    return None
+
+
+def powershell_json(cmd):
+    text = "\n".join(ps(cmd)).strip()
+    if not text:
+        return []
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+    if isinstance(data, dict):
+        return [data]
+    return data if isinstance(data, list) else []
+
+
+def collect_windows_events(max_events=1000):
+    command = f"""
+$events = Get-WinEvent -FilterHashtable @{{ LogName = @('System','Application'); Level = 2,3 }} -MaxEvents {max_events} -ErrorAction SilentlyContinue |
+    Select-Object `
+        LogName, `
+        ProviderName, `
+        Id, `
+        @{{Name='LevelDisplayName';Expression={{ if ($_.LevelDisplayName) {{ $_.LevelDisplayName }} elseif ($_.Level -eq 2) {{ 'Erreur' }} elseif ($_.Level -eq 3) {{ 'Avertissement' }} else {{ [string]$_.Level }} }}}}, `
+        @{{Name='TimeCreated';Expression={{ $_.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss') }}}}, `
+        Message
+$events | ConvertTo-Json -Compress -Depth 3
+"""
+    return powershell_json(command)
+
+
+def summarize_windows_events(events):
+    grouped = {}
+    for event in events:
+        log_name = safe_str(event.get("LogName"), "N/A")
+        provider = safe_str(event.get("ProviderName"), "N/A")
+        level = safe_str(event.get("LevelDisplayName"), "N/A")
+        event_id = event.get("Id", "N/A")
+        key = (log_name, provider, str(event_id), level)
+
+        if key not in grouped:
+            grouped[key] = {
+                "log": log_name,
+                "provider": provider,
+                "id": event_id,
+                "level": level,
+                "count": 0,
+                "last": "",
+                "message": "",
+            }
+
+        item = grouped[key]
+        item["count"] += 1
+        event_time = safe_str(event.get("TimeCreated"), "")
+        if event_time > item["last"]:
+            item["last"] = event_time
+        if not item["message"]:
+            item["message"] = safe_str(event.get("Message"), "")
+
+    return sorted(
+        grouped.values(),
+        key=lambda item: (-item["count"], item["log"], item["provider"], str(item["id"]))
+    )
+
+
+def event_comment(item):
+    info = event_knowledge(item["provider"], item["id"])
+    if info:
+        return info
+    return {
+        "severity": "other",
+        "base_dtl": "Aucune interprétation disponible.",
+        "action": "Consulter le détail Windows si l'occurrence est fréquente ou récente.",
+    }
+
+
+def short_event_message(message, limit=180):
+    text = " ".join(safe_str(message, "").split())
+    if len(text) <= limit:
+        return text
+    return text[:limit - 3] + "..."
+
+
+def default_ipv4_gateways():
+    gateways = []
+    seen = set()
+    for line in run("route print"):
+        parts = line.split()
+        if len(parts) < 5:
+            continue
+        if parts[0] != "0.0.0.0" or parts[1] != "0.0.0.0":
+            continue
+        gateway = parts[2]
+        try:
+            ipaddress.IPv4Address(gateway)
+        except ipaddress.AddressValueError:
+            continue
+        if gateway == "0.0.0.0" or gateway in seen:
+            continue
+        seen.add(gateway)
+        gateways.append(gateway)
+    return gateways
+
+
+def is_ipv4_text(value):
+    try:
+        ipaddress.IPv4Address(value.strip())
+        return True
+    except ipaddress.AddressValueError:
+        return False
+
+
+def looks_like_mac_address(value):
+    text = value.strip()
+    return (
+        len(text) == 17
+        and (text.count("-") == 5 or text.count(":") == 5)
+    )
+
+
+def configured_ipv4_dns_servers():
+    servers = []
+    seen = set()
+    in_dns_block = False
+    for line in run("ipconfig /all"):
+        stripped = line.strip()
+        starts_dns_block = "Serveurs DNS" in stripped or "DNS Servers" in stripped
+        if starts_dns_block:
+            in_dns_block = True
+            value = stripped.rsplit(":", 1)[-1].strip() if ":" in stripped else ""
+        elif in_dns_block and (line.startswith(" ") or line.startswith("\t")):
+            value = stripped
+        else:
+            in_dns_block = False
+            continue
+
+        if is_ipv4_text(value) and value not in seen:
+            seen.add(value)
+            servers.append(value)
+    return servers
+
+
+def ipv4_route_lines():
+    lines = []
+    in_ipv4_table = False
+    for line in run("route print"):
+        if "IPv4" in line:
+            in_ipv4_table = True
+        elif "IPv6" in line:
+            break
+
+        if in_ipv4_table:
+            lines.append(line)
+    return lines
 
 
 def safe_str(val, default="N/A"):
@@ -460,36 +838,69 @@ def get_network_info(c):
         speed  = f"{stats.speed} Mbps" if (stats and stats.speed) else "N/A"
         out(f"{iface:<30} Statut: {status}  Vitesse: {speed}")
         for addr in addrs:
-            fam = str(addr.family)
-            if '2'  in fam: fam = 'IPv4'
-            elif '23' in fam: fam = 'IPv6'
-            elif '17' in fam: fam = 'MAC '
-            out(f"  {fam:<6} {addr.address}")
+            if is_ipv4_text(addr.address):
+                out(f"  IPv4   {addr.address}")
+            elif looks_like_mac_address(addr.address):
+                out(f"  MAC    {addr.address}")
 
     section(tr("Passerelles par défaut"))
-    for line in run("ipconfig /all"):
-        if "Passerelle" in line or "Gateway" in line or "Default" in line:
-            out(f"  {line.strip()}")
+    gateways = default_ipv4_gateways()
+    if gateways:
+        for gateway in gateways:
+            out(f"Passerelle IPv4     : {gateway}")
+    else:
+        out("Passerelle IPv4     : non détectée")
 
     section(tr("DNS configuré"))
-    for line in run("ipconfig /all"):
-        if "DNS" in line and ":" in line:
-            out(f"  {line.strip()}")
+    dns_servers = configured_ipv4_dns_servers()
+    if dns_servers:
+        for server in dns_servers:
+            out(f"DNS IPv4            : {server}")
+    else:
+        out("DNS IPv4            : non détecté")
 
-    section(tr("Table de routage"))
-    for line in run("route print"):
+    section(tr("Table de routage IPv4"))
+    for line in ipv4_route_lines():
         out(line)
 
-    section(tr("Connexions TCP actives"))
+    section(tr("Services Internet probables"))
     conns = psutil.net_connections(kind='tcp')
     established = sorted(
         [cn for cn in conns if cn.status == 'ESTABLISHED'],
         key=lambda x: x.laddr.port
     )
+    internet_connections = collections.Counter()
+    local_connections = 0
     for cn in established:
-        laddr = f"{cn.laddr.ip}:{cn.laddr.port}"
-        raddr = f"{cn.raddr.ip}:{cn.raddr.port}" if cn.raddr else "N/A"
-        out(f"{laddr}  =>  {raddr}  [{cn.status}]")
+        if not cn.raddr:
+            continue
+
+        remote_ip = cn.raddr.ip
+        if is_local_address(remote_ip):
+            local_connections += 1
+            continue
+
+        protocol = protocol_from_port(cn.raddr.port)
+        process_name = process_name_from_pid(cn.pid)
+        service = service_from_connection(remote_ip, protocol, process_name)
+        internet_connections[(service, protocol)] += 1
+
+    if internet_connections:
+        for (service, protocol), count in sorted(
+            internet_connections.items(),
+            key=lambda item: (-item[1], item[0][0].lower(), item[0][1])
+        ):
+            out(format_connection_summary(service, protocol, count))
+    else:
+        out("Aucune connexion Internet établie.")
+
+    section(tr("Connexions locales"))
+    if local_connections:
+        out(
+            f"{local_connections} communications internes entre applications."
+        )
+    else:
+        out("Aucune communication interne active.")
 
     section(tr("Partages SMB locaux"))
     for line in run("net share"):
@@ -578,22 +989,45 @@ def get_services_info(c):
             out(f"{safe_str(svc.DisplayName):<45} Statut: {safe_str(svc.State)}")
 
 
-def get_processes_info(c):
+def get_processes_info(c, sort_by_ram=False):
     header(tr("RUNNING_PROCESSES"))
 
-    procs = []
+    grouped = {}
     for p in psutil.process_iter(['pid', 'name', 'memory_info', 'cpu_times']):
         try:
+            name    = safe_str(p.info['name'], "Processus inconnu")
             mem     = p.info['memory_info'].rss if p.info['memory_info'] else 0
             cpu     = p.info['cpu_times']
             cpu_sec = round((cpu.user + cpu.system), 1) if cpu else 0
-            procs.append((p.info['name'], p.info['pid'], mem, cpu_sec))
+            key = name.lower()
+            if key not in grouped:
+                grouped[key] = {
+                    'name': name,
+                    'pids': [],
+                    'memory': 0,
+                    'cpu': 0,
+                }
+            grouped[key]['pids'].append(p.info['pid'])
+            grouped[key]['memory'] += mem
+            grouped[key]['cpu'] += cpu_sec
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
 
-    procs.sort(key=lambda x: (x[0] or "").lower())
-    for name, pid, mem, cpu_sec in procs:
-        out(f"{safe_str(name):<35} PID: {pid:<8} RAM: {fmt_bytes(mem):<10} CPU: {cpu_sec}s")
+    sort_key = (
+        (lambda x: (-x['memory'], x['name'].lower()))
+        if sort_by_ram
+        else (lambda x: x['name'].lower())
+    )
+    for proc in sorted(grouped.values(), key=sort_key):
+        count = len(proc['pids'])
+        pid = first_pid(proc['pids'])
+        name = f"{proc['name']} ({count})" if count > 1 else proc['name']
+        out(
+            f"{name:<35} "
+            f"PID: {pid:<8} "
+            f"RAM totale: {fmt_bytes(proc['memory']):<10} "
+            f"CPU total: {round(proc['cpu'], 1)}s"
+        )
 
 
 def get_startup_info(c):
@@ -685,8 +1119,9 @@ def get_security_info(c):
         out("Secure Boot : non applicable (BIOS legacy ou accès refusé)")
 
     section(tr("TPM"))
-    for line in ps("Get-Tpm | Format-List"):
-        out(line)
+    tpm_lines = ps("(Get-Tpm).TpmReady")
+    tpm_ready = bool(tpm_lines and tpm_lines[0].strip() == "True")
+    out(f"TPM : {'Activé' if tpm_ready else 'Désactivé'}")
 
 
 def get_updates_info(c):
@@ -706,13 +1141,26 @@ def get_updates_info(c):
 
 def get_drivers_info(c):
     header(tr("INSTALLED_DRIVERS"))
-    drivers = sorted(
-        [d for d in c.Win32_PnPSignedDriver() if d.DeviceName],
-        key=lambda d: d.DeviceName or ""
-    )
+    try:
+        signed_drivers = c.Win32_PnPSignedDriver()
+    except Exception:
+        out("Pilotes : information non disponible (accès refusé)")
+        return
+
+    unique_drivers = {}
+    for d in signed_drivers:
+        name = safe_str(d.DeviceName)
+        if name == "N/A":
+            continue
+        version = safe_str(d.DriverVersion)
+        manufacturer = safe_str(d.Manufacturer)
+        key = (name.lower(), version.lower(), manufacturer.lower())
+        unique_drivers[key] = (name, version, manufacturer)
+
+    drivers = sorted(unique_drivers.values(), key=lambda d: d[0].lower())
     for d in drivers:
-        name = safe_str(d.DeviceName)[:44]
-        out(f"{name:<45} {safe_str(d.DriverVersion):<20} {safe_str(d.Manufacturer)}")
+        name, version, manufacturer = d
+        out(f"{name[:44]:<45} {version:<20} {manufacturer}")
 
 
 def get_users_info(c):
@@ -759,18 +1207,52 @@ def get_shares_info(c):
 
 
 def get_events_info(c):
-    header(tr("RECENT_EVENTS"))
+    header(tr("ANALYSE DES JOURNAUX WINDOWS"))
 
-    for log_name in ("System", "Application"):
-        section(f"Journal : {log_name}")
-        lines = ps(
-            f"Get-EventLog -LogName {log_name} "
-            f"-EntryType Error,Warning -Newest 20 | "
-            f"Select-Object TimeGenerated,EntryType,EventID,Message | "
-            f"Format-List"
-        )
-        for line in lines:
-            out(line)
+    events = collect_windows_events(max_events=1000)
+    summaries = summarize_windows_events(events)
+
+    out(f"{len(summaries)} types d'événements détectés")
+    out(f"{len(events)} événements analysés")
+
+    if not summaries:
+        out("Aucun événement d'erreur ou d'avertissement détecté.")
+        return
+
+    summaries_by_severity = collections.defaultdict(list)
+    for item in summaries:
+        info = event_comment(item)
+        summaries_by_severity[info["severity"]].append((item, info))
+
+    for severity in ("ignore", "plan", "watch", "other"):
+        items = summaries_by_severity.get(severity, [])
+        if not items:
+            continue
+
+        section(EVENT_SEVERITY_TITLES[severity])
+        sorted_items = sorted(items, key=lambda pair: -pair[0]["count"])
+        displayed_items = sorted_items[:10] if severity == "other" else sorted_items
+        for item, info in displayed_items:
+            out(f"{item['provider']} {item['id']}")
+            out(f"Journal             : {item['log']}")
+            out(f"Niveau              : {item['level']}")
+            out(f"Occurrences         : {item['count']}")
+            out(f"Dernière occurrence : {item['last'] or 'N/A'}")
+            if "cause" in info:
+                out(f"Cause probable      : {info['cause']}")
+            else:
+                out(f"Base DTL            : {info['base_dtl']}")
+            out(f"Gravité             : {EVENT_SEVERITY_LABELS[severity]}")
+            out(f"Action              : {info['action']}")
+            if severity == "other":
+                message = short_event_message(item["message"])
+                if message:
+                    out(f"Exemple             : {message}")
+            out()
+
+        hidden_count = len(sorted_items) - len(displayed_items)
+        if hidden_count > 0:
+            out(f"{hidden_count} autres types d'événements non affichés.")
 
 
 def get_perf_info(c):
@@ -1080,6 +1562,7 @@ DISPATCH = {
 def main():
     if os.name == "nt":
         os.system(f"title {APP_NAME} {APP_VERSION}")
+    use_application_dir_when_frozen()
     parser = argparse.ArgumentParser(
         prog="what",
         description="WHAT - Outil d'inventaire système Windows (inspiré du What de DEC VAX/VMS)"
@@ -1113,6 +1596,11 @@ def main():
         default=socket.gethostname(),
         help="Nom ou IP de la machine cible (défaut : machine locale)"
     )
+    parser.add_argument(
+        "--sorted",
+        action="store_true",
+        help="Avec la categorie processes, trie les processus par RAM decroissante"
+    )
     args = parser.parse_args()
     
     global CURRENT_LANG
@@ -1124,9 +1612,15 @@ def main():
 
     if args.category == 'all':
         for fn in DISPATCH.values():
-            fn(c)
+            if fn is get_processes_info:
+                fn(c, sort_by_ram=args.sorted)
+            else:
+                fn(c)
     else:
-        DISPATCH[args.category](c)
+        if args.category == 'processes':
+            get_processes_info(c, sort_by_ram=args.sorted)
+        else:
+            DISPATCH[args.category](c)
 
     now = datetime.datetime.now()
     out()
@@ -1138,6 +1632,7 @@ def main():
         hostname = socket.gethostname()
         date_str = now.strftime("%Y%m%d_%H%M%S")
         output_path = f"DTLsaysWhat_{hostname}_{date_str}.txt"
+    output_path = os.path.abspath(output_path)
 
     try:
         with open(output_path, "w", encoding="utf-8") as f:
@@ -1163,4 +1658,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    exit_code = 0
+    try:
+        main()
+    except SystemExit as e:
+        exit_code = e.code if isinstance(e.code, int) else 1
+    except Exception:
+        exit_code = 1
+        print("\nErreur inattendue :")
+        traceback.print_exc()
+    finally:
+        pause_before_closing()
+    sys.exit(exit_code)

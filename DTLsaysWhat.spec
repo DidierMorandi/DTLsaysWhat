@@ -5,7 +5,7 @@ a = Analysis(
     ['DTLsaysWhat.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('events.json', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

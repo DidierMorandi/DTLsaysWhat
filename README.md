@@ -1,120 +1,222 @@
 # DTLsaysWhat
 
-DTLsaysWhat est un outil d'inventaire système Windows inspiré du célèbre **WHAT** écrit par Stanley Rabinowitz pour DEC VAX/VMS dans les années 80.
+DTLsaysWhat is a Windows system inventory tool inspired by the classic **WHAT**
+utility written by Stanley Rabinowitz for DEC VAX/VMS systems in the 1980s.
 
-L'objectif du projet est de fournir, à partir d'une simple commande, un rapport complet et lisible sur l'état d'une machine Windows, sans installation complexe ni dépendance à une infrastructure centrale.
+Its goal is to produce a complete, readable report about a Windows machine from
+a single command, without a central server or a heavy installation process.
 
-## Fonctionnalités
+The current source reports `APP_VERSION = "v1.0-2"`.
 
-* Informations système
-* Inventaire matériel
-* Mémoire physique et virtuelle
-* Disques et volumes
-* Cartes graphiques
-* Configuration réseau
-* Utilisateurs locaux
-* Services Windows
-* Processus en cours d'exécution
-* Programmes au démarrage
-* Sécurité Windows
-* Mises à jour installées
-* Pilotes installés
-* Tâches planifiées
-* Partages SMB
-* Sessions SMB actives
-* Fichiers ouverts via SMB
-* Événements récents
-* Virtualisation
-* Rapport texte
-* Rapport HTML
+## Features
 
-## Installation
+- System identification and operating system details
+- Hardware inventory
+- Physical and virtual memory
+- Disks and logical volumes
+- Graphics adapters
+- Network configuration
+- Probable Internet services, grouped by service and protocol
+- IPv4 default gateway, IPv4 DNS servers, and IPv4 routing table
+- Installed software and Microsoft Store / AppX packages
+- Windows services
+- Running processes, grouped by process name
+- Optional process sorting by decreasing total RAM usage
+- Startup programs
+- Windows security status
+- Installed updates
+- Installed drivers, with duplicate entries removed
+- Local users and loaded profiles
+- Scheduled tasks
+- Local SMB shares and mapped network drives
+- Recent Windows event log analysis
+- Performance snapshot
+- Virtualization detection
+- Text report
+- HTML report
 
-Prérequis :
+## Requirements
 
-* Windows 10 ou Windows 11
-* Python 3.10 ou supérieur
+- Windows 10 or Windows 11
+- Python 3.10 or later
+- PowerShell
 
-Installer les dépendances :
+Install the Python dependencies:
 
 ```bash
 pip install psutil wmi pywin32
 ```
 
-## Utilisation
+## Usage
 
-Afficher les catégories disponibles :
-
-```bash
-python dtlsayswhat.py -h
-```
-
-Rapport système :
+Show help:
 
 ```bash
-python dtlsayswhat.py system
+python DTLsaysWhat.py -h
 ```
 
-Rapport réseau :
+Generate a system report:
 
 ```bash
-python dtlsayswhat.py network
+python DTLsaysWhat.py system
 ```
 
-Rapport complet :
+Generate a network report:
 
 ```bash
-python dtlsayswhat.py all
+python DTLsaysWhat.py network
 ```
 
-Rapport sur une machine distante :
+Generate a full report:
 
 ```bash
-python dtlsayswhat.py system --computer PC-BEN-001
+python DTLsaysWhat.py all
 ```
 
-Langue anglaise :
+Generate a report for a remote computer through WMI:
 
 ```bash
-python dtlsayswhat.py system --lang en
+python DTLsaysWhat.py system --computer PC-BEN-001
 ```
 
-## Sorties
+Use English labels:
 
-DTLsaysWhat génère :
+```bash
+python DTLsaysWhat.py system --lang en
+```
 
-* un rapport texte (.txt)
-* un rapport HTML (.html)
+Write the text report to a specific file:
 
-Les rapports sont enregistrés dans le répertoire courant.
+```bash
+python DTLsaysWhat.py all --output C:\Temp\inventory.txt
+```
 
-## Philosophie
+Sort running processes by decreasing total RAM usage:
 
-DTLsaysWhat privilégie :
+```bash
+python DTLsaysWhat.py processes --sorted
+```
 
-* la simplicité
-* la lisibilité
-* l'absence d'infrastructure complexe
-* l'esprit des outils d'administration DEC/VMS
+## Categories
+
+Available categories are:
+
+```text
+all, system, hardware, memory, disk, gpu, network, software,
+services, processes, startup, security, updates, drivers,
+users, tasks, shares, events, perf, virt
+```
+
+When no category is provided, `system` is used.
+
+## Command-Line Options
+
+```text
+--lang fr|en          Main report label language. Defaults to fr.
+--output, -o FILE     Write the text report to FILE.
+--computer NAME_OR_IP Target computer for WMI-based collection.
+--sorted              For processes, sort by decreasing total RAM usage.
+```
+
+`--computer` depends on Windows/WMI permissions and network access. Some
+PowerShell-based sections still run locally.
+
+## Output
+
+DTLsaysWhat writes:
+
+- a text report (`.txt`)
+- an HTML report (`.html`)
+
+If `--output` is not provided, the text report is named:
+
+```text
+DTLsaysWhat_<hostname>_<YYYYMMDD_HHMMSS>.txt
+```
+
+The HTML report uses the same base name with an `.html` extension.
+
+## Network Report Notes
+
+The network section is intentionally written for readability:
+
+- active Internet connections are summarized as probable services;
+- local communications are counted separately;
+- the default gateway is shown as IPv4;
+- DNS servers are shown as IPv4;
+- the routing table is limited to IPv4.
+
+Probable Internet services are inferred from ports, known IP ranges, and the
+owning process name when available. Reverse DNS is not used.
+
+## Process Report Notes
+
+The process list is grouped by executable name. For duplicate processes, the
+number of instances is shown in parentheses:
+
+```text
+chrome.exe (13)     PID: 2148   RAM totale: 1.40 GB
+explorer.exe        PID: 17144  RAM totale: 298.41 MB
+```
+
+Only one representative PID is displayed. For detailed per-process inspection,
+use a dedicated tool such as Process Monitor or Process Explorer.
+
+## Event Log Analysis
+
+The `events` category uses `Get-WinEvent`, not the older `Get-EventLog`.
+
+It reads up to 1000 recent warning and error events from the `System` and
+`Application` logs, then groups them by:
+
+- log name;
+- provider/source;
+- event ID;
+- level.
+
+The report shows occurrence counts, the most recent occurrence, and a short
+interpretation when the DTL knowledge base contains one.
+
+Unknown events are reported as:
+
+```text
+Base DTL            : Aucune interprétation disponible.
+```
+
+## Event Knowledge Base
+
+Event interpretations are stored outside the Python source in:
+
+```text
+events.json
+```
+
+Each entry has this shape:
+
+```json
+{
+  "provider": "disk",
+  "event_id": 153,
+  "severity": "watch",
+  "cause": "High storage response time or retried disk command.",
+  "action": "Monitor the disk, cables, controller, and SMART status if the event returns."
+}
+```
+
+Supported severities are:
+
+```text
+ignore, plan, watch, other
+```
+
+When packaged with PyInstaller, `events.json` is included by
+`DTLsaysWhat.spec`.
 
 ## Documentation
 
-* User Guide
-* Reference Manual
+The repository also contains user guides and reference manuals in French and
+English, plus example HTML reports.
 
-## Licence
+## License
 
-Ce projet est distribué sous licence MIT.
-
-## Update - 14 June 2026
-
-The current code reports `APP_VERSION = "v1.0-2"` in `DTLsaysWhat.py`.
-
-New and confirmed points:
-
-- The tool accepts `--lang fr|en` for the main labels.
-- `--computer NAME_OR_IP` can query a remote machine through WMI when permissions and network access allow it.
-- `--output` / `-o` writes a text report.
-- Available categories include `system`, `hardware`, `memory`, `disk`, `gpu`, `network`, `software`, `services`, `processes`, `startup`, `security`, `updates`, `drivers`, `users`, `tasks`, `shares`, `events`, `perf`, `virt`, and `all`.
-- The repository now contains user guides and reference manuals in French and English.
-- `DTLsaysWhat_PREDATOR_example.html` is present as an example HTML output.
+This project is distributed under the MIT license.
