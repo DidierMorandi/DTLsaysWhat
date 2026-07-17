@@ -31,11 +31,15 @@ import ipaddress
 import io
 import json
 import os
+import re
+import shutil
 import socket
 import subprocess
 import sys
 import traceback
+import webbrowser
 import winreg
+from pathlib import Path
 
 """
 Cette version est bilingue. Elle permet :
@@ -45,10 +49,32 @@ python dtlsayswhat.py all --lang en
 
 CURRENT_LANG = "fr"
 APP_NAME = "DTLsaysWhat"
-APP_VERSION = "v1.0-2"
+APP_VERSION = "v1.0-10"
+APP_SUITE = "Un outil de la suite NetDTL"
+APP_WEBSITE = "www.netdtl.com"
+DEFAULT_CATEGORY = "all"
+LOGO_LINES = (
+    "┌─┬─┬─┬─┬─┬─┐",
+    "│N│e│t│D│T│L│",
+    "└─┴─┴─┴─┴─┴─┘",
+)
+ANSI_LOGO = "\033[38;2;255;255;255;48;2;2;1;183m"
+ANSI_BOLD = "\033[1m"
+ANSI_RESET = "\033[0m"
 
 I18N = {
     "fr": {
+        "APP_SUBTITLE": "Inventaire système Windows",
+        "MACHINE": "Machine",
+        "DATE": "Date",
+        "SELECTED_CATEGORY": "Catégorie",
+        "REPORT_TYPE": "Type de rapport",
+        "REPORT_SCOPE": "Périmètre",
+        "PRIVATE_REPORT": "Privé (non anonymisé)",
+        "SHAREABLE_REPORT": "Partageable (anonymisé)",
+        "FULL_REPORT": "Complet (toutes les catégories)",
+        "PARTIAL_REPORT": "Partiel",
+        "CHAPTERS": "chapitres",
         "SYSTEM": "SYSTÈME",
         "HARDWARE": "MATÉRIEL",
         "MEMORY": "MÉMOIRE",
@@ -78,6 +104,17 @@ I18N = {
     },
 
     "en": {
+        "APP_SUBTITLE": "Windows system inventory",
+        "MACHINE": "Computer",
+        "DATE": "Date",
+        "SELECTED_CATEGORY": "Category",
+        "REPORT_TYPE": "Report type",
+        "REPORT_SCOPE": "Scope",
+        "PRIVATE_REPORT": "Private (not anonymized)",
+        "SHAREABLE_REPORT": "Shareable report (anonymized)",
+        "FULL_REPORT": "Complete (all categories)",
+        "PARTIAL_REPORT": "Partial",
+        "CHAPTERS": "chapters",
         "SYSTEM": "SYSTEM",
         "HARDWARE": "HARDWARE",
         "MEMORY": "MEMORY",
@@ -158,10 +195,211 @@ CATEGORIES = [
     'updates', 'drivers', 'users', 'tasks', 'shares', 'events', 'perf', 'virt'
 ]
 
+REPORT_CHAPTERS = (
+    ("system", "Système et identification"),
+    ("hardware", "Matériel et processeurs"),
+    ("memory", "Mémoire"),
+    ("disk", "Disques et volumes"),
+    ("gpu", "Cartes graphiques"),
+    ("network", "Réseau"),
+    ("software", "Logiciels installés"),
+    ("services", "Services Windows"),
+    ("processes", "Processus"),
+    ("startup", "Programmes au démarrage"),
+    ("security", "Sécurité"),
+    ("updates", "Mises à jour"),
+    ("drivers", "Pilotes"),
+    ("users", "Utilisateurs"),
+    ("tasks", "Tâches planifiées"),
+    ("shares", "Partages réseau"),
+    ("events", "Événements Windows"),
+    ("perf", "Performances"),
+    ("virt", "Virtualisation"),
+)
+REPORT_CHAPTER_LABELS = dict(REPORT_CHAPTERS)
+
+
+def normalize_categories(selection):
+    """Retourne une liste ordonnée de catégories réelles à exécuter."""
+    all_categories = [category for category, _label in REPORT_CHAPTERS]
+    if selection in (None, "all"):
+        return all_categories
+    if isinstance(selection, str):
+        selection = [selection]
+    selected = set(selection)
+    return [category for category in all_categories if category in selected]
+
+
+def report_scope_label(selection):
+    categories = normalize_categories(selection)
+    if len(categories) == len(REPORT_CHAPTERS):
+        return tr("FULL_REPORT")
+    if len(categories) == 1:
+        return f"{tr('PARTIAL_REPORT')} · {categories[0].upper()}"
+    return f"{tr('PARTIAL_REPORT')} · {len(categories)} {tr('CHAPTERS')}"
+
 output_lines = []
 
 # Structured HTML output: list of dicts with type in ('line','header','section')
 html_entries = []
+
+ANONYMIZE_REPORT = False
+SENSITIVE_IDENTITIES = []
+SENSITIVE_MACHINE_NAMES = []
+
+ANONYMIZED = "[ANONYMISÉ]"
+ANONYMIZED_MACHINE = ANONYMIZED
+ANONYMIZED_USER = ANONYMIZED
+ANONYMIZED_DOMAIN = ANONYMIZED
+ANONYMIZED_SERIAL = ANONYMIZED
+ANONYMIZED_UUID = ANONYMIZED
+ANONYMIZED_MAC = ANONYMIZED
+ANONYMIZED_IP = ANONYMIZED
+ANONYMIZED_PRODUCT_KEY = ANONYMIZED
+
+
+def configure_anonymization(enabled, computer=None):
+    """Configure le filtre global avant le début de la collecte."""
+    global ANONYMIZE_REPORT, SENSITIVE_IDENTITIES, SENSITIVE_MACHINE_NAMES
+    ANONYMIZE_REPORT = enabled
+    candidates = ((os.environ.get("USERNAME"), ANONYMIZED_USER),)
+    identities = []
+    seen = set()
+    for value, replacement in candidates:
+        value = safe_str(value, "")
+        if len(value) < 3 or value.casefold() in seen:
+            continue
+        seen.add(value.casefold())
+        identities.append((value, replacement))
+    SENSITIVE_IDENTITIES = sorted(identities, key=lambda item: len(item[0]), reverse=True)
+
+    machine_names = (computer, socket.gethostname(), os.environ.get("COMPUTERNAME"))
+    SENSITIVE_MACHINE_NAMES = []
+    seen = set()
+    for value in machine_names:
+        value = safe_str(value, "")
+        if len(value) < 3 or value.casefold() in seen:
+            continue
+        seen.add(value.casefold())
+        SENSITIVE_MACHINE_NAMES.append(value)
+
+
+def _replace_ipv4(match):
+    try:
+        address = ipaddress.IPv4Address(match.group(0))
+    except ipaddress.AddressValueError:
+        return match.group(0)
+    private_networks = (
+        ipaddress.IPv4Network("10.0.0.0/8"),
+        ipaddress.IPv4Network("172.16.0.0/12"),
+        ipaddress.IPv4Network("192.168.0.0/16"),
+        ipaddress.IPv4Network("169.254.0.0/16"),
+    )
+    return ANONYMIZED_IP if any(address in network for network in private_networks) else match.group(0)
+
+
+def _replace_ipv6(match):
+    value = match.group(0)
+    try:
+        address = ipaddress.IPv6Address(value.strip("[]"))
+    except ipaddress.AddressValueError:
+        return value
+    if address.is_private and not address.is_loopback:
+        return ANONYMIZED_IP
+    return value
+
+
+def anonymize_text(text):
+    """Masque les identifiants sensibles dans toute sortie du rapport."""
+    text = str(text)
+    if not ANONYMIZE_REPORT or not text:
+        return text
+
+    # Champs dont la valeur complète est sensible.
+    field_patterns = (
+        (r"(?i)^(\s*(?:Nom machine|Nom d'hôte|Machine|Computer|Host name|Hostname)\s*:\s*).*$", ANONYMIZED_MACHINE),
+        (r"(?i)^(\s*Domaine\s*/\s*Workgroup\s*:\s*).*$", ANONYMIZED_DOMAIN),
+        (r"(?i)^(\s*Compte\s*:\s*).*$", ANONYMIZED_USER),
+        (r"(?i)^(\s*Numéro de série\s*:\s*).*$", ANONYMIZED_SERIAL),
+        (r"(?i)^(\s*UUID\s*:\s*).*$", ANONYMIZED_UUID),
+        (r"(?i)^(\s*(?:Clé produit|Product Key)\s*:\s*).*$", ANONYMIZED_PRODUCT_KEY),
+        (r"(?i)^(\s*SN\s*:\s*).*$", ANONYMIZED_SERIAL),
+    )
+    for pattern, replacement in field_patterns:
+        text = re.sub(pattern, lambda match: f"{match.group(1)}{replacement}", text)
+
+    # Champs sensibles intégrés au milieu d'une ligne structurée.
+    text = re.sub(
+        r"(?i)(\bSN\s*:\s*)\S+",
+        lambda match: f"{match.group(1)}{ANONYMIZED_SERIAL}",
+        text,
+    )
+    text = re.sub(
+        r"(?i)(Utilisateur\s*:\s*)(.*?)(\s{2,}Commande\s*:|$)",
+        lambda match: f"{match.group(1)}{ANONYMIZED_USER}{match.group(3)}",
+        text,
+    )
+
+    # Identifiants détectables quel que soit leur emplacement.
+    text = re.sub(
+        r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b",
+        ANONYMIZED_UUID,
+        text,
+    )
+    text = re.sub(
+        r"(?i)\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b",
+        ANONYMIZED_MAC,
+        text,
+    )
+    text = re.sub(
+        r"(?i)\b(?:[A-Z0-9]{5}-){4}[A-Z0-9]{5}\b",
+        ANONYMIZED_PRODUCT_KEY,
+        text,
+    )
+    text = re.sub(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", _replace_ipv4, text)
+    text = re.sub(r"(?i)(?:\[[0-9a-f:]+\]|\b[0-9a-f]{0,4}:[0-9a-f:]+\b)", _replace_ipv6, text)
+    text = re.sub(r"(?i)\bS-1-(?:\d+-){1,14}\d+\b", ANONYMIZED, text)
+    text = re.sub(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", ANONYMIZED, text)
+    text = re.sub(
+        r"(?i)([A-Z]:\\Users\\)[^\\\s]+",
+        lambda match: f"{match.group(1)}{ANONYMIZED_USER}",
+        text,
+    )
+    text = re.sub(
+        r"(\\\\)[^\\\s]+",
+        lambda match: f"{match.group(1)}{ANONYMIZED_MACHINE}",
+        text,
+    )
+
+    # Un nom de machine n'est masqué que dans un contexte qui l'identifie comme tel.
+    for machine_name in SENSITIVE_MACHINE_NAMES:
+        text = re.sub(
+            rf"(?i)((?:machine|ordinateur|computer|hôte|host)\s+(?:nommé|named)\s+){re.escape(machine_name)}\b",
+            lambda match: f"{match.group(1)}{ANONYMIZED_MACHINE}",
+            text,
+        )
+
+    # Le nom d'utilisateur est intrinsèquement sensible, quel que soit le contexte.
+    for value, replacement in SENSITIVE_IDENTITIES:
+        text = re.sub(
+            rf"(?i)(?<![\w-]){re.escape(value)}(?![\w-])",
+            lambda _match, replacement=replacement: replacement,
+            text,
+        )
+    return text
+
+
+def anonymize_user_table_line(line):
+    """Masque la première colonne des lignes de données de Get-LocalUser."""
+    if not ANONYMIZE_REPORT or not line.strip():
+        return line
+    stripped = line.strip()
+    if stripped.startswith("Name") or set(stripped) <= {"-", " "}:
+        return line
+    match = re.match(r"^(\s*)(\S+)(.*)$", line)
+    if not match:
+        return line
+    return f"{match.group(1)}{ANONYMIZED_USER}{match.group(3)}"
 
 
 def get_application_dir():
@@ -190,10 +428,95 @@ def pause_before_closing():
         os.system("pause")
 
 
+def open_html_report(path):
+    """Ouvre le rapport HTML avec l'application associée par défaut."""
+    absolute_path = os.path.abspath(path)
+    try:
+        if os.name == "nt":
+            os.startfile(absolute_path)
+            return True
+        return bool(webbrowser.open_new_tab(Path(absolute_path).as_uri()))
+    except (OSError, webbrowser.Error):
+        return False
+
+
 def out(line=""):
+    line = anonymize_text(line)
     output_lines.append(line)
     html_entries.append({'type': 'line', 'text': line})
-    print(line)
+
+
+def console_width():
+    """Retourne une largeur stable pour l'en-tête, même hors terminal interactif."""
+    try:
+        return max(76, min(shutil.get_terminal_size().columns, 160))
+    except OSError:
+        return 100
+
+
+def display_chapter_progress(index, total, category):
+    """Réécrit la progression sur une seule ligne de la console."""
+    label = REPORT_CHAPTER_LABELS.get(category, category.upper())
+    message = f"Traitement {index}/{total} · {label}..."
+    width = max(20, console_width() - 1)
+    print(f"\r{message[:width].ljust(width)}", end="", flush=True)
+
+
+def finish_chapter_progress(total):
+    """Remplace la progression par un unique message final."""
+    message = f"Traitement terminé · {total} chapitre{'s' if total > 1 else ''}"
+    width = max(20, console_width() - 1)
+    print(f"\r{message[:width].ljust(width)}")
+
+
+def supports_color():
+    """Active les couleurs ANSI uniquement si la console sait les afficher."""
+    if not sys.stdout.isatty() or "NO_COLOR" in os.environ:
+        return False
+    if os.name != "nt":
+        return os.environ.get("TERM", "").casefold() != "dumb"
+    try:
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_uint32()
+        if handle in (0, -1) or not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        return bool(kernel32.SetConsoleMode(handle, mode.value | 0x0004))
+    except (AttributeError, OSError, ValueError):
+        return False
+
+
+def brand_header_lines(screen_width, color=False):
+    """Construit l'en-tête NetDTL sur le modèle de DTLi18n."""
+    left = (f"{APP_NAME} {APP_VERSION}", APP_SUITE, APP_WEBSITE)
+    gap = 3
+    logo_width = len(LOGO_LINES[0])
+    left_width = max(0, screen_width - logo_width - gap)
+    result = []
+    for index, (text, logo) in enumerate(zip(left, LOGO_LINES)):
+        text = text[:left_width]
+        padding = " " * (left_width - len(text))
+        visible_text = (
+            f"{ANSI_BOLD}{text}{ANSI_RESET}{padding}"
+            if color and index == 0
+            else f"{text}{padding}"
+        )
+        visible_logo = f"{ANSI_LOGO}{logo}{ANSI_RESET}" if color else logo
+        result.append(f"{visible_text}{' ' * gap}{visible_logo}")
+    result.extend(("", tr("APP_SUBTITLE"), "", "=" * screen_width))
+    return result
+
+
+def display_brand_header(record=True):
+    """Affiche l'en-tête coloré tout en conservant une sortie rapport sans ANSI."""
+    screen_width = console_width()
+    plain_lines = brand_header_lines(screen_width)
+    display_lines = brand_header_lines(screen_width, supports_color())
+    for plain, displayed in zip(plain_lines, display_lines):
+        if record:
+            output_lines.append(plain)
+            html_entries.append({'type': 'line', 'text': plain})
+        print(displayed)
 
 
 def header(title):
@@ -202,18 +525,12 @@ def header(title):
     output_lines.append(f"  {title}")
     output_lines.append("=" * 60)
     html_entries.append({'type': 'header', 'text': title})
-    print()
-    print("=" * 60)
-    print(f"  {title}")
-    print("=" * 60)
 
 
 def section(title):
     output_lines.append("")
     output_lines.append(f"--- {title} ---")
     html_entries.append({'type': 'section', 'text': title})
-    print()
-    print(f"--- {title} ---")
 
 
 def fmt_bytes(n):
@@ -1168,7 +1485,7 @@ def get_users_info(c):
 
     section(tr("Comptes locaux"))
     for line in ps("Get-LocalUser | Select-Object Name,Enabled,LastLogon | Format-Table -AutoSize"):
-        out(line)
+        out(anonymize_user_table_line(line))
 
     section(tr("Profils utilisateurs"))
     for profile in c.Win32_UserProfile():
@@ -1330,111 +1647,157 @@ def get_virt_info(c):
 # ---------------------------------------------------------------------------
 
 _HTML_CSS = """
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; }
+:root {
+    --brand: #0201b7;
+    --brand-dark: #01016f;
+    --brand-soft: #eeeeff;
+    --ink: #1f2937;
+    --muted: #667085;
+    --line: #d9deea;
+    --surface: #ffffff;
+    --page: #f4f6fb;
+}
+html { scroll-behavior: smooth; }
 body {
-    background: #0a0a0a;
-    color: #00cc44;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 13px;
-    padding: 0;
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
 }
 #sidebar {
     position: fixed;
     top: 0; left: 0;
-    width: 220px;
+    width: 250px;
     height: 100vh;
-    background: #050505;
-    border-right: 1px solid #004d1a;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
     overflow-y: auto;
-    padding: 12px 0;
+    padding: 24px 16px;
     z-index: 100;
 }
 #sidebar h2 {
-    color: #00ff66;
-    font-size: 11px;
+    color: var(--brand-dark);
+    font-size: 12px;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    padding: 0 14px 10px;
-    border-bottom: 1px solid #004d1a;
-    margin-bottom: 8px;
+    letter-spacing: 1.4px;
+    margin: 0 8px 14px;
 }
 #sidebar a {
     display: block;
-    color: #009933;
+    color: #475467;
     text-decoration: none;
-    padding: 4px 14px;
-    font-size: 11px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: color 0.15s, background 0.15s;
 }
-#sidebar a:hover { color: #00ff66; background: #0d1f12; }
+#sidebar a:hover { color: var(--brand); background: var(--brand-soft); }
 #main {
-    margin-left: 220px;
-    padding: 30px 40px 60px;
-    max-width: 1100px;
+    margin-left: 250px;
+    padding: 32px 42px 64px;
+    max-width: 1320px;
 }
-.meta {
-    color: #006622;
+.brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    padding: 26px 30px;
+    color: white;
+    background: linear-gradient(135deg, var(--brand-dark), var(--brand));
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(2, 1, 183, 0.18);
+}
+.brand-kicker { margin: 0 0 5px; opacity: .82; font-size: 12px; }
+.brand h1 { margin: 0; font-size: 30px; letter-spacing: -.5px; }
+.brand-subtitle { margin: 6px 0 0; opacity: .9; }
+.netdtl-logo { display: flex; border: 2px solid white; flex-shrink: 0; }
+.netdtl-logo span {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 38px;
+    border-right: 1px solid white;
+    font-family: Consolas, monospace;
+    font-weight: 700;
+}
+.netdtl-logo span:last-child { border-right: 0; }
+.meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 12px;
+    margin: 18px 0 30px;
+}
+.meta-item {
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+}
+.meta-label {
+    display: block;
+    color: var(--muted);
     font-size: 11px;
-    margin-bottom: 24px;
-    border-bottom: 1px solid #004d1a;
-    padding-bottom: 10px;
+    font-weight: 700;
+    letter-spacing: .7px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+.meta-value { color: var(--ink); font-weight: 600; }
+.report-content {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px 28px 32px;
 }
 .header-block {
-    margin-top: 40px;
-    margin-bottom: 4px;
-}
-.header-block .hbar {
-    color: #00ff66;
-    font-size: 11px;
-    letter-spacing: 1px;
+    margin-top: 34px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--brand);
 }
 .header-block h1 {
-    color: #00ff66;
-    font-size: 16px;
-    font-weight: bold;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    text-shadow: 0 0 8px #00cc44;
-    padding: 4px 0;
+    margin: 0;
+    color: var(--brand-dark);
+    font-size: 19px;
+    letter-spacing: .4px;
 }
 .section-block {
-    margin-top: 22px;
-    margin-bottom: 6px;
+    margin-top: 24px;
+    margin-bottom: 9px;
 }
 .section-block h2 {
-    color: #00cc44;
-    font-size: 12px;
-    font-weight: bold;
-    letter-spacing: 1px;
-    border-left: 3px solid #00cc44;
-    padding-left: 8px;
+    margin: 0;
+    color: #344054;
+    font-size: 14px;
+    border-left: 4px solid var(--brand);
+    padding: 3px 0 3px 10px;
 }
 .line {
-    color: #00aa33;
-    white-space: pre;
-    line-height: 1.55;
-    font-size: 12px;
+    color: #303846;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12.5px;
 }
 .line.empty { line-height: 0.7; }
-.scanline {
-    pointer-events: none;
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: repeating-linear-gradient(
-        to bottom,
-        transparent 0px,
-        transparent 3px,
-        rgba(0,0,0,0.08) 3px,
-        rgba(0,0,0,0.08) 4px
-    );
-    z-index: 9999;
+@media (max-width: 900px) {
+    #sidebar { position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+    #sidebar a { display: inline-block; }
+    #main { margin-left: 0; padding: 22px; }
+    .meta-grid { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
 }
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #050505; }
-::-webkit-scrollbar-thumb { background: #004d1a; border-radius: 3px; }
+@media (max-width: 560px) {
+    .brand { align-items: flex-start; padding: 22px; }
+    .brand h1 { font-size: 24px; }
+    .netdtl-logo { display: none; }
+    .meta-grid { grid-template-columns: 1fr; }
+    .report-content { padding: 6px 18px 24px; }
+}
 """
 
 def _esc(text):
@@ -1445,8 +1808,11 @@ def _esc(text):
             .replace(">", "&gt;"))
 
 
-def generate_html(category, computer, generated_at):
+def generate_html(categories, computer, generated_at):
     """Construit le fichier HTML à partir de html_entries."""
+    computer = ANONYMIZED_MACHINE if ANONYMIZE_REPORT else computer
+    report_type = tr("SHAREABLE_REPORT") if ANONYMIZE_REPORT else tr("PRIVATE_REPORT")
+    scope = report_scope_label(categories)
     headers_seen = []
     for e in html_entries:
         if e['type'] == 'header':
@@ -1461,23 +1827,25 @@ def generate_html(category, computer, generated_at):
     # Contenu principal
     body_parts = []
     hdr_idx = -1
+    content_started = False
     for e in html_entries:
         t = e['type']
         text = e['text']
         if t == 'header':
+            content_started = True
             hdr_idx += 1
             anchor = f'hdr-{hdr_idx}'
             body_parts.append(
                 f'<div class="header-block" id="{anchor}">'
-                f'<div class="hbar">{"=" * 60}</div>'
                 f'<h1>{_esc(text)}</h1>'
-                f'<div class="hbar">{"=" * 60}</div>'
                 f'</div>'
             )
+        elif not content_started:
+            continue
         elif t == 'section':
             body_parts.append(
                 f'<div class="section-block">'
-                f'<h2>--- {_esc(text)} ---</h2>'
+                f'<h2>{_esc(text)}</h2>'
                 f'</div>'
             )
         else:  # line
@@ -1489,7 +1857,7 @@ def generate_html(category, computer, generated_at):
     body_html = "\n".join(body_parts)
 
     html = f"""<!DOCTYPE html>
-<html lang="fr">
+<html lang="{CURRENT_LANG}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1497,18 +1865,28 @@ def generate_html(category, computer, generated_at):
 <style>{_HTML_CSS}</style>
 </head>
 <body>
-<div class="scanline"></div>
 <nav id="sidebar">
   <h2>Navigation</h2>
   {nav_items}
 </nav>
 <div id="main">
-  <div class="meta">
-    {APP_NAME} {APP_VERSION} &nbsp;|&nbsp; Machine : {_esc(computer)}
-    &nbsp;|&nbsp; Catégorie : {_esc(category.upper())}
-    &nbsp;|&nbsp; {_esc(generated_at)}
+  <header class="brand">
+    <div>
+      <p class="brand-kicker">{APP_SUITE} · {APP_WEBSITE}</p>
+      <h1>{APP_NAME} <span>{APP_VERSION}</span></h1>
+      <p class="brand-subtitle">{_esc(tr('APP_SUBTITLE'))}</p>
+    </div>
+    <div class="netdtl-logo" aria-label="NetDTL">
+      <span>N</span><span>e</span><span>t</span><span>D</span><span>T</span><span>L</span>
+    </div>
+  </header>
+  <div class="meta-grid">
+    <div class="meta-item"><span class="meta-label">{_esc(tr('MACHINE'))}</span><span class="meta-value">{_esc(computer)}</span></div>
+    <div class="meta-item"><span class="meta-label">{_esc(tr('REPORT_TYPE'))}</span><span class="meta-value">{_esc(report_type)}</span></div>
+    <div class="meta-item"><span class="meta-label">{_esc(tr('REPORT_SCOPE'))}</span><span class="meta-value">{_esc(scope)}</span></div>
+    <div class="meta-item"><span class="meta-label">{_esc(tr('DATE'))}</span><span class="meta-value">{_esc(generated_at)}</span></div>
   </div>
-  {body_html}
+  <main class="report-content">{body_html}</main>
 </div>
 </body>
 </html>"""
@@ -1518,18 +1896,96 @@ def generate_html(category, computer, generated_at):
 # Bannière
 # ---------------------------------------------------------------------------
 
-def banner(category, computer):
-    out()
-    out(" __        ___  _    _  _____  ")
-    out(r" \ \      / / || |  / \|_   _| ")
-    out(r"  \ \ /\ / /|_||_| / _ \ | |   ")
-    out(r"   \ V  V / |_||_|/ ___ \| |   ")
-    out(r"    \_/\_/  |_||_/_/   \_\_|   ")
-    out()
-    out(f"{APP_NAME} {APP_VERSION}")
+def clear_console():
+    os.system("cls" if os.name == "nt" else "clear")
+
+
+def choose_report_type():
+    """Demande le niveau de confidentialité et confirme le mode partageable."""
+    if sys.stdout.isatty():
+        clear_console()
+    display_brand_header(record=False)
+    while True:
+        print("\nType de rapport\n")
+        print("1  Rapport technique (usage privé)")
+        print("2  Rapport partageable (anonymisé) pour une documentation")
+        print("0  Annuler")
+        choice = input("\nVotre choix : ").strip()
+        if choice == "0":
+            return None
+        if choice == "1":
+            return False
+        if choice != "2":
+            print("\nChoix invalide. Saisissez 0, 1 ou 2.")
+            continue
+
+        print("\nLes informations suivantes seront anonymisées :\n")
+        print("Données toujours anonymisées :")
+        print("✓ UUID")
+        print("✓ Numéro de série")
+        print("✓ Clés produit (si présentes)")
+        print("✓ SID utilisateur")
+        print("✓ Adresse MAC")
+        print("✓ Nom d'utilisateur")
+        print("\nDonnées contextuelles :")
+        print("✓ Nom de la machine")
+        print("✓ Domaine")
+        print("✓ Adresses IP privées ou locales, y compris les DNS internes")
+        print("✓ Toute donnée identifiée comme sensible")
+        while True:
+            confirmation = input("\nContinuer ? (O/N) : ").strip().casefold()
+            if confirmation in {"o", "oui", "y", "yes"}:
+                return True
+            if confirmation in {"n", "non", "no"}:
+                break
+            print("Réponse invalide. Saisissez O ou N.")
+
+
+def choose_report_chapters():
+    """Permet de sélectionner un ou plusieurs chapitres du rapport."""
+    clear_console()
+    display_brand_header(record=False)
+    print("\nChapitres à inclure\n")
+    print("A   Tous les chapitres")
+    for number, (_category, label) in enumerate(REPORT_CHAPTERS, start=1):
+        print(f"{number:<3} {label}")
+    print("0   Annuler")
+    print("\nSaisissez A, ou plusieurs numéros séparés par des virgules.")
+    print("Exemple : 1, 3, 6")
+
+    while True:
+        answer = input("\nVotre choix [A] : ").strip()
+        if not answer or answer.casefold() in {"a", "all", "tous"}:
+            return normalize_categories("all")
+        if answer == "0":
+            return None
+
+        tokens = [token for token in re.split(r"[\s,;]+", answer) if token]
+        try:
+            numbers = [int(token) for token in tokens]
+        except ValueError:
+            print("Choix invalide. Utilisez A ou des numéros séparés par des virgules.")
+            continue
+        if not numbers or any(number < 1 or number > len(REPORT_CHAPTERS) for number in numbers):
+            print(f"Choix invalide. Les numéros vont de 1 à {len(REPORT_CHAPTERS)}.")
+            continue
+
+        selected = {
+            REPORT_CHAPTERS[number - 1][0]
+            for number in numbers
+        }
+        return normalize_categories(selected)
+
+
+def banner(categories, computer):
+    display_brand_header()
     now = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-    out(f"Machine : {computer}   Date : {now}")
-    out(f"Catégorie sélectionnée : {category.upper()}")
+    out(f"{tr('MACHINE')} : {computer}")
+    out(f"{tr('DATE')} : {now}")
+    report_type = tr("SHAREABLE_REPORT") if ANONYMIZE_REPORT else tr("PRIVATE_REPORT")
+    out(f"{tr('REPORT_TYPE')} : {report_type}")
+    scope = report_scope_label(categories)
+    out(f"{tr('REPORT_SCOPE')} : {scope}")
 
 
 # ---------------------------------------------------------------------------
@@ -1578,7 +2034,7 @@ def main():
     parser.add_argument(
         "category",
         nargs="?",
-        default="system",
+        default=None,
         choices=CATEGORIES,
         metavar="CATÉGORIE",
         help="Catégorie à interroger : " + ", ".join(CATEGORIES)
@@ -1601,26 +2057,65 @@ def main():
         action="store_true",
         help="Avec la categorie processes, trie les processus par RAM decroissante"
     )
+    privacy_group = parser.add_mutually_exclusive_group()
+    privacy_group.add_argument(
+        "--anonymize",
+        action="store_true",
+        help="Créer directement un rapport partageable anonymisé"
+    )
+    privacy_group.add_argument(
+        "--report-type",
+        choices=["private", "shareable"],
+        help="Choisir le type de rapport sans afficher le menu interactif"
+    )
+    parser.add_argument(
+        "--no-open",
+        action="store_true",
+        help="Ne pas ouvrir automatiquement le rapport HTML à la fin"
+    )
     args = parser.parse_args()
     
     global CURRENT_LANG
     CURRENT_LANG = args.lang
-    print("LANG =", CURRENT_LANG)
+    output_lines.clear()
+    html_entries.clear()
+    interactive_menus = sys.stdin.isatty() and not (args.anonymize or args.report_type)
 
-    c = get_wmi(args.computer)
-    banner(args.category, args.computer)
-
-    if args.category == 'all':
-        for fn in DISPATCH.values():
-            if fn is get_processes_info:
-                fn(c, sort_by_ram=args.sorted)
-            else:
-                fn(c)
+    if args.anonymize:
+        anonymize = True
+    elif args.report_type:
+        anonymize = args.report_type == "shareable"
+    elif interactive_menus:
+        anonymize = choose_report_type()
+        if anonymize is None:
+            return
     else:
-        if args.category == 'processes':
+        # Conserve le comportement historique pour les scripts non interactifs.
+        anonymize = False
+
+    if args.category is not None:
+        categories = normalize_categories(args.category)
+    elif interactive_menus:
+        categories = choose_report_chapters()
+        if categories is None:
+            return
+    else:
+        categories = normalize_categories(DEFAULT_CATEGORY)
+
+    configure_anonymization(anonymize, args.computer)
+
+    if sys.stdout.isatty():
+        clear_console()
+    c = get_wmi(args.computer)
+    banner(categories, args.computer)
+    print()
+    for index, category in enumerate(categories, start=1):
+        display_chapter_progress(index, len(categories), category)
+        if category == 'processes':
             get_processes_info(c, sort_by_ram=args.sorted)
         else:
-            DISPATCH[args.category](c)
+            DISPATCH[category](c)
+    finish_chapter_progress(len(categories))
 
     now = datetime.datetime.now()
     out()
@@ -1629,7 +2124,7 @@ def main():
     if args.output:
         output_path = args.output
     else:
-        hostname = socket.gethostname()
+        hostname = "anonyme" if ANONYMIZE_REPORT else socket.gethostname()
         date_str = now.strftime("%Y%m%d_%H%M%S")
         output_path = f"DTLsaysWhat_{hostname}_{date_str}.txt"
     output_path = os.path.abspath(output_path)
@@ -1645,13 +2140,15 @@ def main():
     html_path = output_path.replace(".txt", ".html") if output_path.endswith(".txt") else output_path + ".html"
     try:
         html_content = generate_html(
-            args.category,
+            categories,
             args.computer,
             now.strftime("%d-%m-%Y %H:%M:%S")
         )
         with open(html_path, "w", encoding="utf-8") as f:
             f.write(html_content)
         print(f"Rapport HTML  sauvegardé : {html_path}")
+        if not args.no_open and not open_html_report(html_path):
+            print("Impossible d'ouvrir automatiquement le rapport HTML.")
     except OSError as e:
         print(f"Impossible d'écrire dans : {html_path}")
         print(str(e))

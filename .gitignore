@@ -13,3 +13,5 @@ venv/
 /dist/
 
 /DTLsaysWhat_Guide_Utilisateur.docx
+
+/test_DTLsaysWhat.py

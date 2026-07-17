@@ -6,7 +6,7 @@ utility written by Stanley Rabinowitz for DEC VAX/VMS systems in the 1980s.
 Its goal is to produce a complete, readable report about a Windows machine from
 a single command, without a central server or a heavy installation process.
 
-The current source reports `APP_VERSION = "v1.0-2"`.
+The current source reports `APP_VERSION = "v1.0-10"`.
 
 ## Features
 
@@ -48,6 +48,16 @@ pip install psutil wmi pywin32
 ```
 
 ## Usage
+
+When launched interactively, both choices create a complete report: either private
+or shareable and anonymized. Use `--anonymize` to select the shareable
+mode directly, or `--report-type private|shareable` in automated scripts.
+An additional menu selects all chapters or any combination of numbered chapters.
+The HTML report opens automatically when processing completes; use `--no-open`
+to disable this behavior.
+Detailed report lines are no longer printed to the console; both TXT and HTML
+files are still generated.
+During generation, one in-place progress line shows the chapter currently being processed.
 
 Show help:
 
@@ -107,7 +117,8 @@ services, processes, startup, security, updates, drivers,
 users, tasks, shares, events, perf, virt
 ```
 
-When no category is provided, `system` is used.
+When no category is provided, `all` is used. Specify a category such as `system`
+or `network` only when a deliberately partial report is wanted.
 
 ## Command-Line Options
 

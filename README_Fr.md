@@ -99,13 +99,20 @@ Ce projet est distribué sous licence MIT.
 
 ## Mise à jour - 14 juin 2026
 
-Le code courant annonce `APP_VERSION = "v1.0-2"` dans `DTLsaysWhat.py`.
+Le code courant annonce `APP_VERSION = "v1.0-10"` dans `DTLsaysWhat.py`.
 
 Points confirmés :
 
 - L'outil accepte `--lang fr|en` pour les libellés principaux.
 - `--computer NOM_OU_IP` peut interroger une machine distante via WMI lorsque les droits et le réseau le permettent.
 - `--output` / `-o` écrit un rapport texte.
+- Au lancement interactif, les deux choix produisent un rapport complet : privé ou partageable anonymisé.
+- Un second menu permet de sélectionner tous les chapitres ou plusieurs chapitres par leur numéro.
+- `--anonymize` génère directement un rapport partageable ; `--report-type private|shareable` permet d'automatiser ce choix.
+- Le rapport HTML s'ouvre automatiquement à la fin du traitement ; `--no-open` désactive cette ouverture.
+- Le contenu détaillé n'est plus affiché dans la console, mais les rapports TXT et HTML sont toujours enregistrés.
+- Pendant la génération, une ligne unique affiche le chapitre en cours et se réécrit sur place.
+- Sans catégorie explicite, le périmètre est `all`. Une catégorie comme `system` ou `network` permet volontairement de produire un rapport partiel en ligne de commande.
 - Les catégories disponibles incluent `system`, `hardware`, `memory`, `disk`, `gpu`, `network`, `software`, `services`, `processes`, `startup`, `security`, `updates`, `drivers`, `users`, `tasks`, `shares`, `events`, `perf`, `virt` et `all`.
 - Le dépôt contient maintenant des guides utilisateur et manuels de référence en français et en anglais.
 - `DTLsaysWhat_PREDATOR_example.html` est présent comme exemple de sortie HTML.
